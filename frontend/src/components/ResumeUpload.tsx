@@ -71,6 +71,18 @@ export default function ResumeUpload() {
   const [truthfulnessReport, setTruthfulnessReport] = useState<any | null>(null);
   const [atsScore, setAtsScore] = useState<number>(0);
 
+  // Manual Entry States
+  const [isManualEntry, setIsManualEntry] = useState(false);
+  const [manualName, setManualName] = useState("");
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualPhone, setManualPhone] = useState("");
+  const [manualSkills, setManualSkills] = useState("");
+  const [manualRole, setManualRole] = useState("");
+  const [manualCompany, setManualCompany] = useState("");
+  const [manualStartDate, setManualStartDate] = useState("");
+  const [manualEndDate, setManualEndDate] = useState("");
+  const [manualBullets, setManualBullets] = useState("");
+
   const handleTailorSuccess = (
     tailored: ResumeParsedData,
     gaps: any,
@@ -165,56 +177,240 @@ export default function ResumeUpload() {
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
       {/* Upload Zone */}
-      {!intakeResult && (
-        <form onSubmit={handleUpload} className="p-8 border border-dashed border-slate-800 rounded-3xl bg-slate-900/20 backdrop-blur-xl flex flex-col items-center justify-center space-y-6 hover:border-indigo-500/40 transition duration-300">
-          <div className="p-4 bg-indigo-500/10 text-indigo-400 rounded-2xl">
-            <Upload className="w-8 h-8" />
-          </div>
-          <div className="text-center space-y-1">
-            <h3 className="text-lg font-semibold text-slate-200">Upload your PDF resume</h3>
-            <p className="text-sm text-slate-400">Drag and drop or browse to select your PDF file</p>
-          </div>
-          
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={handleFileChange}
-            className="hidden"
-            id="resume-file-input"
-          />
-          <label
-            htmlFor="resume-file-input"
-            className="px-6 py-2.5 rounded-xl border border-slate-700 bg-slate-800/50 text-slate-200 hover:bg-slate-700 hover:text-white transition duration-200 cursor-pointer font-medium text-sm"
-          >
-            {file ? file.name : "Select Resume"}
-          </label>
-
-          {file && (
-            <button
-              type="submit"
-              disabled={uploading}
-              className="w-full max-w-xs py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm transition duration-200 flex items-center justify-center gap-2"
+      {!intakeResult && !isManualEntry && (
+        <div className="space-y-4">
+          <form onSubmit={handleUpload} className="p-8 border border-dashed border-slate-800 rounded-3xl bg-slate-900/20 backdrop-blur-xl flex flex-col items-center justify-center space-y-6 hover:border-indigo-500/40 transition duration-300 animate-fade-in">
+            <div className="p-4 bg-indigo-500/10 text-indigo-400 rounded-2xl">
+              <Upload className="w-8 h-8" />
+            </div>
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-semibold text-slate-200">Upload your PDF resume</h3>
+              <p className="text-sm text-slate-400">Drag and drop or browse to select your PDF file</p>
+            </div>
+            
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handleFileChange}
+              className="hidden"
+              id="resume-file-input"
+            />
+            <label
+              htmlFor="resume-file-input"
+              className="px-6 py-2.5 rounded-xl border border-slate-700 bg-slate-800/50 text-slate-200 hover:bg-slate-700 hover:text-white transition duration-200 cursor-pointer font-medium text-sm"
             >
-              {uploading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Extracting Resume...
-                </>
-              ) : (
-                "Upload & Parse Profile"
-              )}
-            </button>
-          )}
+              {file ? file.name : "Select Resume"}
+            </label>
 
-          {error && (
-            <div className="w-full p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-300 text-sm flex items-start gap-2 max-w-md">
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-semibold">Extraction Failed</span>
-                <p className="text-xs text-rose-400 mt-1">{error}</p>
+            {file && (
+              <button
+                type="submit"
+                disabled={uploading}
+                className="w-full max-w-xs py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm transition duration-200 flex items-center justify-center gap-2"
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Extracting Resume...
+                  </>
+                ) : (
+                  "Upload & Parse Profile"
+                )}
+              </button>
+            )}
+
+            {error && (
+              <div className="w-full p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-300 text-sm flex items-start gap-2 max-w-md">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold">Extraction Failed</span>
+                  <p className="text-xs text-rose-400 mt-1">{error}</p>
+                </div>
+              </div>
+            )}
+          </form>
+          <div className="text-center">
+            <button
+              onClick={() => setIsManualEntry(true)}
+              className="text-indigo-400 hover:text-indigo-350 text-sm font-semibold hover:underline transition duration-200"
+            >
+              Or fill in your details manually →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Entry Form */}
+      {!intakeResult && isManualEntry && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!manualName.trim() || !manualEmail.trim()) {
+              alert("Name and Email are required.");
+              return;
+            }
+            const bulletsArray = manualBullets
+              .split("\n")
+              .map((b) => b.trim())
+              .filter(Boolean);
+            
+            const manualProfile: ResumeParsedData = {
+              name: manualName.trim(),
+              email: manualEmail.trim(),
+              phone: manualPhone.trim() || undefined,
+              links: [],
+              skills: manualSkills
+                .split(",")
+                .map((s) => s.trim())
+                .filter(Boolean),
+              education: [],
+              experience: [
+                {
+                  role: manualRole.trim() || "Software Engineer",
+                  company: manualCompany.trim() || "Self-Employed",
+                  start_date: manualStartDate.trim() || "2023-01",
+                  end_date: manualEndDate.trim() || "Present",
+                  bullets: bulletsArray.length > 0 ? bulletsArray : ["Developed backend and frontend software services."]
+                }
+              ],
+              projects: []
+            };
+
+            setIntakeResult({
+              user_id: "manual-" + Math.random().toString(36).substring(2, 9),
+              parsed_resume: manualProfile,
+              github_enriched: null
+            });
+            setIsManualEntry(false);
+          }}
+          className="p-8 border border-slate-800 rounded-3xl bg-slate-900/20 backdrop-blur-xl space-y-6 max-w-2xl mx-auto animate-fade-in"
+        >
+          <div className="flex justify-between items-center pb-4 border-b border-slate-800">
+            <h3 className="text-lg font-bold text-slate-200">Manual Profile Setup</h3>
+            <button
+              type="button"
+              onClick={() => setIsManualEntry(false)}
+              className="text-slate-400 hover:text-slate-200 text-sm transition"
+            >
+              Cancel
+            </button>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Name *</label>
+              <input
+                type="text"
+                required
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+                placeholder="Eyad Arshad"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/40 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Email *</label>
+              <input
+                type="email"
+                required
+                value={manualEmail}
+                onChange={(e) => setManualEmail(e.target.value)}
+                placeholder="eyad@example.com"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/40 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Phone</label>
+              <input
+                type="text"
+                value={manualPhone}
+                onChange={(e) => setManualPhone(e.target.value)}
+                placeholder="+92-300-1234567"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/40 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Skills (comma-separated)</label>
+              <input
+                type="text"
+                value={manualSkills}
+                onChange={(e) => setManualSkills(e.target.value)}
+                placeholder="Python, FastAPI, React, PostgreSQL"
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/40 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="border-t border-slate-800 pt-4 space-y-4">
+            <h4 className="text-sm font-semibold text-indigo-400">Add Primary Work Experience</h4>
+            
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Role Title</label>
+                <input
+                  type="text"
+                  value={manualRole}
+                  onChange={(e) => setManualRole(e.target.value)}
+                  placeholder="Backend Engineer Intern"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/40 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Company Name</label>
+                <input
+                  type="text"
+                  value={manualCompany}
+                  onChange={(e) => setManualCompany(e.target.value)}
+                  placeholder="TechCorp"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/40 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none"
+                />
               </div>
             </div>
-          )}
+
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">Start Date</label>
+                <input
+                  type="text"
+                  value={manualStartDate}
+                  onChange={(e) => setManualStartDate(e.target.value)}
+                  placeholder="2023-06"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/40 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-slate-400">End Date</label>
+                <input
+                  type="text"
+                  value={manualEndDate}
+                  onChange={(e) => setManualEndDate(e.target.value)}
+                  placeholder="2023-12 (or 'Present')"
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/40 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-slate-400">Experience Achievements (one per line)</label>
+              <textarea
+                rows={3}
+                value={manualBullets}
+                onChange={(e) => setManualBullets(e.target.value)}
+                placeholder="Developed backend services using Python and FastAPI.&#10;Optimized database queries decreasing latency by 20%."
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800/40 text-slate-200 text-sm focus:border-indigo-500 focus:outline-none font-sans"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm transition duration-200"
+          >
+            Create & Save Profile
+          </button>
         </form>
       )}
 
