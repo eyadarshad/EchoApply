@@ -228,6 +228,33 @@ class LLMClient:
                 verification_report=report
             )
 
+        elif schema_name == "ResumeParsedData":
+            return response_schema(
+                name="Eyad Arshad",
+                email="eyad.arshad@example.com",
+                phone="+92-300-1234567",
+                links=["github.com/eyad-dev"],
+                skills=["Python", "FastAPI", "React", "TypeScript", "PostgreSQL"],
+                education=[{
+                    "degree": "B.S. Computer Science",
+                    "school": "NUCES",
+                    "date": "2024"
+                }],
+                experience=[
+                    {
+                        "role": "Backend Engineer Intern",
+                        "company": "TechCorp",
+                        "start_date": "2023-06",
+                        "end_date": "2023-12",
+                        "bullets": [
+                            "Developed backend services using Python and FastAPI.",
+                            "Optimized database queries decreasing latency by 20%."
+                        ]
+                    }
+                ],
+                projects=[]
+            )
+
         # Basic fallback for other schemas
         return response_schema()
 
