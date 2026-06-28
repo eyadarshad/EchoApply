@@ -52,6 +52,16 @@ class LLMClient:
                 required.append("React")
             if "typescript" in text_lower:
                 required.append("TypeScript")
+            if "java" in text_lower:
+                required.append("Java")
+            if "spring boot" in text_lower:
+                required.append("Spring Boot")
+            if "aws" in text_lower:
+                required.append("AWS")
+            if "mysql" in text_lower:
+                required.append("MySQL")
+            if "terraform" in text_lower:
+                preferred.append("Terraform")
 
             if not required:
                 required = ["Python", "FastAPI"]
