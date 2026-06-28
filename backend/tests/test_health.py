@@ -1,3 +1,4 @@
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from app.main import app
 
@@ -25,11 +26,42 @@ def test_echo_endpoint_validation_error():
     response = client.post("/echo", json=payload)
     assert response.status_code == 422  # Unprocessable Entity
 
-def test_tailor_stub_endpoint():
+@patch("app.main.tailor_resume_flow")
+def test_tailor_stub_endpoint(mock_tailor):
+    # Setup mock return to avoid LLM & DB calls
+    mock_tailor.return_value = {
+        "content_json": {
+            "name": "Eyad Ahmed",
+            "email": "eyad.ahmed@example.com",
+            "phone": "+92-300-1234567",
+            "links": ["github.com/eyad-dev"],
+            "skills": ["Python", "FastAPI"],
+            "education": [],
+            "experience": [],
+            "projects": [],
+            "anchor_line": "Backend Engineer specializing in FastAPI",
+            "highlights_strip": []
+        },
+        "gap_analysis": {
+            "matched_skills": ["Python", "FastAPI"],
+            "missing_skills": [],
+            "partial_matches": []
+        },
+        "truthfulness_report": {
+            "is_fabricated": False,
+            "verification_report": []
+        },
+        "ats_score": 90
+    }
     payload = {
         "user_id": "user-123",
         "job_id": "job-456",
-        "additional_context": "Tailor it specifically for backend dev."
+        "jd_text": "We want a FastAPI developer",
+        "parsed_resume": {
+            "name": "Eyad Ahmed",
+            "email": "eyad.ahmed@example.com",
+            "skills": ["Python", "FastAPI"]
+        }
     }
     response = client.post("/tailor", json=payload)
     assert response.status_code == 200
@@ -38,7 +70,7 @@ def test_tailor_stub_endpoint():
     assert data["job_id"] == "job-456"
     assert "resume_id" in data
     assert "content_json" in data
-    assert "ats_score" in data
+    assert data["ats_score"] == 90
 
 def test_jobs_search_stub_endpoint():
     payload = {

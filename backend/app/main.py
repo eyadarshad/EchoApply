@@ -184,26 +184,11 @@ async def tailor_resume(payload: ResumeTailorRequest):
             if conn:
                 conn.close()
 
-    # Fallback to mock profile if DB is unreachable and no profile was supplied
+    # Raise error if no profile was supplied and could not be fetched from DB
     if not profile:
-        profile = ResumeParsedData(
-            name="Eyad Ahmed",
-            email="eyad.ahmed@example.com",
-            phone="+92-300-1234567",
-            links=["github.com/eyad-dev", "linkedin.com/in/eyadahmed"],
-            skills=["Python", "FastAPI", "TypeScript", "Next.js", "PostgreSQL"],
-            education=[{"degree": "B.S.", "major": "Computer Science", "school": "NUCES", "date": "2024"}],
-            experience=[{
-                "role": "Software Engineer Intern",
-                "company": "TechSolutions",
-                "start_date": "2023-06",
-                "end_date": "2024-05",
-                "bullets": [
-                    "Developed backend services using Python and FastAPI.",
-                    "Built frontend UI in React and Next.js."
-                ]
-            }],
-            projects=[]
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Parsed resume profile was not supplied and could not be retrieved from the database."
         )
 
     # 2. Resolve job description text
@@ -225,11 +210,11 @@ async def tailor_resume(payload: ResumeTailorRequest):
             if conn:
                 conn.close()
                 
-    # Fallback to default job description if none provided and DB is offline
+    # Raise error if no job description text was supplied and could not be fetched from DB
     if not jd_text:
-        jd_text = (
-            "We are looking for a Software Engineer with experience in Python, FastAPI, and Next.js. "
-            "Responsibilities include building web backend services, structuring databases, and collaborating on UI components."
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Job description text was not supplied and could not be retrieved from the database."
         )
 
     try:
