@@ -108,37 +108,12 @@ def run_impact_pass(
         "Return structured JSON matching the ImpactPassResult schema."
     )
 
-    try:
-        logger.info("Executing Impact Pass stage (escalating to pro model)...")
-        # Run on Pro model for higher quality tagline writing and formatting judgment
-        result = llm_client.generate_structured(
-            prompt=prompt,
-            response_schema=ImpactPassResult,
-            model_type="pro",
-            system_instruction=system_instruction
-        )
-        return result
-    except Exception as e:
-        logger.error(f"Error during Impact Pass stage: {str(e)}")
-        # Fallback: construct tagline and highlights, and truncate lists to 3 items
-        fallback_experience = []
-        for exp in mapped_experiences:
-            fallback_experience.append({
-                "role": exp["role"],
-                "company": exp["company"],
-                "start_date": exp["start_date"],
-                "end_date": exp["end_date"],
-                "location": exp["location"],
-                "bullets": exp["bullets"][:3]  # Truncate to 3 bullets
-            })
-        
-        fallback_highlights = [
-            HighlightSkill(skill=s, relevance_reason="Core skill matching job description.")
-            for s in profile.skills[:4]
-        ]
-        
-        return ImpactPassResult(
-            anchor_line=f"{jd_analysis.role_title} candidate",
-            highlights_strip=fallback_highlights,
-            tailored_experience=fallback_experience
-        )
+    logger.info("Executing Impact Pass stage (escalating to pro model)...")
+    # Run on Pro model for higher quality tagline writing and formatting judgment
+    result = llm_client.generate_structured(
+        prompt=prompt,
+        response_schema=ImpactPassResult,
+        model_type="pro",
+        system_instruction=system_instruction
+    )
+    return result

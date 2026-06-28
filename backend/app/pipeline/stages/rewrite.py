@@ -51,20 +51,11 @@ def rewrite_bullets(profile: ResumeParsedData, gap_analysis: GapAnalysisResult) 
         "\nFor each original bullet, output the original text alongside its rewritten, tailored version in the requested JSON structure."
     )
 
-    try:
-        logger.info(f"Executing Targeted Rewrite stage for {len(original_bullets)} bullets...")
-        result = llm_client.generate_structured(
-            prompt=prompt,
-            response_schema=TargetedRewriteResult,
-            model_type="flash",
-            system_instruction=system_instruction
-        )
-        return result
-    except Exception as e:
-        logger.error(f"Error during Targeted Rewrite stage: {str(e)}")
-        # Fallback: return original bullets unchanged
-        fallback_bullets = [
-            RewrittenBullet(original_bullet=b, rewritten_bullet=b)
-            for b in original_bullets
-        ]
-        return TargetedRewriteResult(rewritten_bullets=fallback_bullets)
+    logger.info(f"Executing Targeted Rewrite stage for {len(original_bullets)} bullets...")
+    result = llm_client.generate_structured(
+        prompt=prompt,
+        response_schema=TargetedRewriteResult,
+        model_type="flash",
+        system_instruction=system_instruction
+    )
+    return result

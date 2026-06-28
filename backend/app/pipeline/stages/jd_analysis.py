@@ -44,22 +44,11 @@ def analyze_job_description(jd_text: str) -> JDAnalysisResult:
         "--- END UNTRUSTED JOB DESCRIPTION ---\n"
     )
 
-    try:
-        logger.info("Executing JD analysis stage...")
-        result = llm_client.generate_structured(
-            prompt=prompt,
-            response_schema=JDAnalysisResult,
-            model_type="flash",
-            system_instruction=system_instruction
-        )
-        return result
-    except Exception as e:
-        logger.error(f"Error during JD analysis stage: {str(e)}")
-        # Graceful fallback to avoid halting the pipeline
-        return JDAnalysisResult(
-            role_title="Target Role",
-            seniority="Mid",
-            required_skills=[],
-            preferred_skills=[],
-            key_responsibilities=[]
-        )
+    logger.info("Executing JD analysis stage...")
+    result = llm_client.generate_structured(
+        prompt=prompt,
+        response_schema=JDAnalysisResult,
+        model_type="flash",
+        system_instruction=system_instruction
+    )
+    return result

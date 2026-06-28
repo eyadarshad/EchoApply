@@ -64,26 +64,17 @@ def verify_truthfulness(profile: ResumeParsedData, impact_result: ImpactPassResu
         "Return the audit report in the structured JSON matching the TruthfulnessCheckResult schema."
     )
 
-    try:
-        logger.info("Executing Truthfulness Gate audit (Gemini Pro)...")
-        result = llm_client.generate_structured(
-            prompt=prompt,
-            response_schema=TruthfulnessCheckResult,
-            model_type="pro",
-            system_instruction=system_instruction
-        )
-        
-        # Double check if any bullet in the report is marked as fabricated, and set the root flag
-        any_fabricated = any(item.is_fabricated for item in result.verification_report)
-        result.is_fabricated = any_fabricated
-        
-        logger.info(f"Truthfulness audit completed. Fabrications flagged: {any_fabricated}")
-        return result
-    except Exception as e:
-        logger.error(f"Error during Truthfulness Gate stage: {str(e)}")
-        # Safe fallback: assume all is truthful (no block)
-        verifications = [
-            BulletVerification(rewritten_bullet=b, is_fabricated=False, justification="", suggested_fix="")
-            for b in tailored_bullets
-        ]
-        return TruthfulnessCheckResult(is_fabricated=False, verification_report=verifications)
+    logger.info("Executing Truthfulness Gate audit (Gemini Pro)...")
+    result = llm_client.generate_structured(
+        prompt=prompt,
+        response_schema=TruthfulnessCheckResult,
+        model_type="pro",
+        system_instruction=system_instruction
+    )
+    
+    # Double check if any bullet in the report is marked as fabricated, and set the root flag
+    any_fabricated = any(item.is_fabricated for item in result.verification_report)
+    result.is_fabricated = any_fabricated
+    
+    logger.info(f"Truthfulness audit completed. Fabrications flagged: {any_fabricated}")
+    return result

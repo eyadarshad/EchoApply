@@ -150,21 +150,34 @@ def test_tailor_resume_flow_success(mock_generate, sample_candidate_profile):
     assert result["ats_score"] == 60
 
 
-def test_tailor_resume_flow_unreachable_db_fallback(sample_candidate_profile):
+@patch("app.services.llm_client.llm_client.generate_structured")
+@patch("app.pipeline.stages.technique_selection.get_db_connection")
+def test_tailor_resume_flow_unreachable_db_fallback(mock_get_db, mock_generate, sample_candidate_profile):
     # Test that the technique selection stage falls back gracefully when PostgreSQL is unreachable
-    # (select_techniques falls back internally to general CS techniques)
-    jd = "Job text"
+    mock_get_db.return_value = None
     
-    # Run the orchestrator with LLM mocked to throw exceptions, inducing full stage fallbacks
-    with patch("app.services.llm_client.llm_client.generate_structured") as mock_jd:
-        mock_jd.side_effect = Exception("API Key invalid")
-        
-        result = tailor_resume_flow(sample_candidate_profile, jd, "Computer Science")
-        
-        # Falls back to default schemas
-        assert result["ats_score"] == 80  # fallback ATS score
-        assert result["gap_analysis"].matched_skills == []
-        assert result["truthfulness_report"].is_fabricated == False
+    # Setup mock returns for each LLM stage in execution order
+    jd_res = JDAnalysisResult(
+        role_title="Software Engineer",
+        seniority="Junior",
+        required_skills=["Python", "FastAPI", "PostgreSQL"],
+        preferred_skills=[],
+        key_responsibilities=[]
+    )
+    gap_res = GapAnalysisResult(matched_skills=["Python"], missing_skills=["FastAPI"], partial_matches=[])
+    rewrite_res = TargetedRewriteResult(rewritten_bullets=[])
+    impact_res = ImpactPassResult(anchor_line="Line", highlights_strip=[], tailored_experience=[])
+    truth_res = TruthfulnessCheckResult(is_fabricated=False, verification_report=[])
+    
+    mock_generate.side_effect = [jd_res, gap_res, rewrite_res, impact_res, truth_res]
+    
+    jd = "Job text"
+    result = tailor_resume_flow(sample_candidate_profile, jd, "Computer Science")
+    
+    # Verify that even with DB unreachable, techniques were selected and pipeline completed successfully
+    assert result["ats_score"] == 50
+    assert result["gap_analysis"].matched_skills == ["Python"]
+
 
 
 @patch("app.services.llm_client.llm_client.generate_structured")
