@@ -3,7 +3,8 @@ import json
 import logging
 import re
 from typing import Type, TypeVar, Optional, List, Dict, Any
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from pydantic import BaseModel, ValidationError
 from app.config import settings
 
@@ -15,8 +16,9 @@ class LLMClient:
     def __init__(self):
         self.api_key = settings.GEMINI_API_KEY
         if self.api_key and not self.api_key.startswith("mock-"):
-            genai.configure(api_key=self.api_key)
+            self.client = genai.Client(api_key=self.api_key)
         else:
+            self.client = None
             logger.warning("GEMINI_API_KEY is unset or set to a mock value. Live LLM calls will fail. Entering simulation mode.")
 
     def get_model_name(self, model_type: str = "flash") -> str:
@@ -469,11 +471,12 @@ class LLMClient:
 
         model_name = self.get_model_name(model_type)
         
-        # Set up model configuration
-        model = genai.GenerativeModel(
-            model_name=model_name,
-            system_instruction=system_instruction
-        )
+        # Clean up model name: the new SDK expects 'gemini-1.5-flash' or 'gemini-1.5-pro'
+        clean_model_name = model_name
+        if clean_model_name == "gemini-1.5-flash-latest":
+            clean_model_name = "gemini-1.5-flash"
+        elif clean_model_name == "gemini-1.5-pro-latest":
+            clean_model_name = "gemini-1.5-pro"
 
         current_prompt = prompt
         attempts = 0
@@ -481,18 +484,20 @@ class LLMClient:
         while attempts < max_retries:
             attempts += 1
             try:
-                logger.info(f"Calling Gemini API (Attempt {attempts}/{max_retries}) using {model_name}...")
+                logger.info(f"Calling Gemini API (Attempt {attempts}/{max_retries}) using {clean_model_name}...")
                 
                 # Fetch output from Gemini with schema enforcement
                 contents = [current_prompt]
                 if images:
                     contents.extend(images)
 
-                response = model.generate_content(
-                    contents,
-                    generation_config=genai.types.GenerationConfig(
+                response = self.client.models.generate_content(
+                    model=clean_model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
                         response_mime_type="application/json",
-                        response_schema=response_schema
+                        response_schema=response_schema,
+                        system_instruction=system_instruction
                     )
                 )
                 
