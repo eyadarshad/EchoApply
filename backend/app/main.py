@@ -4,7 +4,11 @@ from fastapi import FastAPI, UploadFile, File, Response, Query, HTTPException, s
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas import (
     HealthResponse, EchoRequest, EchoResponse, 
-    ResumeParsedData, ResumeIntakeResponse
+    ResumeParsedData, ResumeIntakeResponse,
+    ResumeTailorRequest, ResumeTailorResponse,
+    JobSearchRequest, JobSearchResponse,
+    DraftAnswersRequest, DraftAnswersResponse,
+    ApplicationSubmitRequest, ApplicationSubmitResponse
 )
 from app.config import settings
 from app.parsers.pdf_parser import extract_text_from_pdf, PDFParserError, ScannedPDFError
@@ -136,6 +140,95 @@ async def render_resume(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to render document: {str(e)}"
         )
+
+# ==========================================
+# Phase 2: Tailoring Pipeline Stub
+# ==========================================
+
+@app.post("/tailor", response_model=ResumeTailorResponse)
+async def tailor_resume(payload: ResumeTailorRequest):
+    """
+    Orchestrates the resume tailoring process for a specific job.
+    This is a stub for Phase 2 implementation.
+    """
+    return ResumeTailorResponse(
+        resume_id=str(uuid.uuid4()),
+        user_id=payload.user_id,
+        job_id=payload.job_id,
+        content_json={
+            "name": "Stub Profile",
+            "skills": ["Python", "FastAPI"],
+            "experience": []
+        },
+        ats_score=85
+    )
+
+# ==========================================
+# Phase 3 & 5: Job Search & Matching Stub
+# ==========================================
+
+@app.post("/jobs/search", response_model=JobSearchResponse)
+async def search_jobs(payload: JobSearchRequest):
+    """
+    Search and rank job listings from multiple aggregators.
+    This is a stub for Phase 3/5 implementation.
+    """
+    import datetime
+    return JobSearchResponse(
+        query_hash="stub_hash",
+        jobs=[
+            {
+                "job_id": "stub_job_1",
+                "source": "JSearch",
+                "title": "Backend Developer",
+                "company": "Tech Solutions",
+                "location": payload.location or "Remote",
+                "remote": payload.remote_only,
+                "apply_url": "https://example.com/apply",
+                "jd_text": "We are looking for a Python developer...",
+                "fetched_at": datetime.datetime.now(datetime.timezone.utc),
+                "job_hash": "stub_job_hash_1",
+                "match_score": 0.9,
+                "match_explanation": "Good match based on Python and FastAPI.",
+                "is_applied": False
+            }
+        ]
+    )
+
+# ==========================================
+# Phase 4 & 6: Application & Auto-Apply Stubs
+# ==========================================
+
+@app.post("/apply/draft", response_model=DraftAnswersResponse)
+async def draft_answers(payload: DraftAnswersRequest):
+    """
+    Draft answers to job screening questions.
+    This is a stub for Phase 4 implementation.
+    """
+    return DraftAnswersResponse(
+        job_id=payload.job_id,
+        questions=[
+            {
+                "question_id": "q1",
+                "question_text": "How many years of experience do you have with FastAPI?",
+                "drafted_answer": "I have 2 years of experience building production APIs with FastAPI.",
+                "confidence": 0.95,
+                "needs_user_input": False
+            }
+        ]
+    )
+
+@app.post("/apply/submit", response_model=ApplicationSubmitResponse)
+async def submit_application(payload: ApplicationSubmitRequest):
+    """
+    Submit job application or trigger auto-apply agent.
+    This is a stub for Phase 4/6 implementation.
+    """
+    return ApplicationSubmitResponse(
+        application_id=str(uuid.uuid4()),
+        status="pending" if payload.opt_in_agent else "success",
+        action_required=None
+    )
 
 if __name__ == "__main__":
     import uvicorn
