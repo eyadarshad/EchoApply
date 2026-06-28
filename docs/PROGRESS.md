@@ -40,9 +40,19 @@
 ---
 
 ## Phase 2: Tailoring Pipeline & Technique Library
-- **Status**: Pending
-- **What will be built**:
-  - 7-stage tailoring orchestrator: JD analysis, Technique selection, Gap analysis, Targeted rewrite, Impact pass, Truthfulness check, and Rendering.
-  - LLM routing logic: Gemini 3.5 Flash as standard model, escalating to Gemini 3.1 Pro/3.5 Pro for the Impact pass and Truthfulness check.
-  - Validation retry decorator for backend LLM calls.
-  - UI interface displaying gap analysis results, suggested rewrites, and the Truthfulness Gate approval prompt.
+- **Status**: Completed & Verified
+- **Date**: 2026-06-28
+- **What was built**:
+  - Extended Pydantic schemas in `backend/app/schemas.py` supporting all intermediate tailoring stage data transfers.
+  - Implemented all 7 pipeline stages: JD Analysis (Stage 1), Technique Selection with SQL fallback (Stage 2), Gap Analysis (Stage 3), Targeted Factual Rewrite (Stage 4), Impact Pass & Density Trimming (Stage 5), Truthfulness Gate auditing (Stage 6), and Compile (Stage 7).
+  - Built the tailoring sequence orchestrator `backend/app/pipeline/orchestrator.py` and connected it to the FastAPI `/tailor` endpoint.
+  - Updated PDF and Word document compilers to render the tailored tagline (anchor line) and relevance highlights.
+  - Created glassmorphic frontend `TailorPanel.tsx` for pasting job listings and displaying step progression.
+  - Created interactive frontend `TruthfulnessGate.tsx` displaying ATS match scores, honest skill gaps, fabrication flags, and inline bullet editors.
+- **Verification**:
+  - Backend integration tests authored in `backend/tests/test_tailor_pipeline.py` covering sequential runs, prompt injection safety, short JDs, database offline fallbacks, and truthfulness alerts.
+  - Frontend type safety type-checked via `npx tsc --noEmit` and tests executed with 100% pass counts.
+- **Decisions**:
+  - Implemented sequence-based mocking of the shared `llm_client.generate_structured` singleton method to prevent test cross-contamination in pytest.
+  - Designed `/tailor` endpoint request payload to allow optional parsed resume data, permitting fully operational, database-less execution paths.
+  - Set default density control bounds to restrict experiences to at most 3 bullets per job and 8 total bullets, prioritizing the highest-impact metrics first to ensure single-page layouts.
