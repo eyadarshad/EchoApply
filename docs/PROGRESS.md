@@ -9,11 +9,14 @@
   - FastAPI backend skeleton with configuration loader, health-check, echo routing, and typed schemas.
   - Next.js frontend skeleton with landing page verification UI, TypeScript, Tailwind, and Vitest configuration.
 - **Verification**:
-  - Backend tests run and passed (`pytest backend/tests/test_health.py`).
+  - Backend tests run and passed (`pytest backend/tests/test_health.py` and `pytest backend/tests/test_database.py`), confirming health, echo routing, and the unique constraint on the applications table.
   - Frontend unit tests run and passed (`npm run test`).
+  - CI pipeline configuration added and verified under `.github/workflows/ci.yml`.
 - **Decisions**:
   - Standardized embedding vector dimensions to **768** to align with Gemini's default `text-embedding-004` model.
   - Initialized both FastAPI and Vitest test suites to prevent contract regression during subsequent phases.
+  - Resolved psycopg connection string parsing error by passing `connect_timeout` directly to the `psycopg.connect` kwargs rather than string concatenation on a URI.
+  - Implemented typed API endpoints stubs (`/tailor`, `/jobs/search`, `/apply/draft`, `/apply/submit`) to establish a complete contract skeleton between frontend and backend.
 
 ---
 
