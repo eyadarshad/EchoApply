@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eyad Arshad — Resume</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:       #1C1C1C;
+    --muted:     #5A5A5A;
+    --faint:     #909090;
+    --sidebar:   #16181C;
+    --sidebar2:  #1E2128;
+    --s-text:    #E8E6E1;
+    --s-muted:   #9A9891;
+    --s-faint:   #5C5B57;
+    --accent:    #C8873A;
+    --accent-lt: #F0C990;
+    --rule:      #E2DDD8;
+    --bg:        #FAF8F5;
+    --serif:     'DM Serif Display', Georgia, serif;
+    --sans:      'Instrument Sans', sans-serif;
+    --mono:      'DM Mono', monospace;
+  }
+
+  html, body {
+    background: #D0CBC3;
+    display: flex;
+    justify-content: center;
+    padding: 32px 0 48px;
+    min-height: 100vh;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 230mm;
+    background: var(--bg);
+    display: grid;
+    grid-template-columns: 62mm 1fr;
+    font-family: var(--sans);
+    color: var(--ink);
+    position: relative;
+    box-shadow: 0 4px 40px rgba(0,0,0,0.22);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    background: var(--sidebar);
+    padding: 30px 20px 32px 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .name-block { margin-bottom: 22px; }
+
+  .name {
+    font-family: var(--serif);
+    font-size: 26px;
+    color: #F4F1EC;
+    line-height: 1.1;
+    letter-spacing: -0.3px;
+    margin-bottom: 6px;
+  }
+
+  .role-tag {
+    font-family: var(--mono);
+    font-size: 8.5px;
+    color: var(--accent);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    line-height: 1.4;
+  }
+
+  .s-section { margin-bottom: 18px; }
+
+  .s-label {
+    font-family: var(--mono);
+    font-size: 7px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--s-faint);
+    margin-bottom: 8px;
+    padding-bottom: 5px;
+    border-bottom: 0.5px solid #2C2F36;
+  }
+
+  .contact-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin-bottom: 5px;
+  }
+
+  .contact-icon {
+    width: 12px;
+    height: 12px;
+    margin-top: 1px;
+    flex-shrink: 0;
+    opacity: .55;
+  }
+
+  .contact-text {
+    font-size: 8px;
+    color: var(--s-text);
+    line-height: 1.5;
+    text-decoration: none;
+    word-break: break-all;
+  }
+
+  a.contact-text:hover { color: var(--accent-lt); }
+
+  .skill-group { margin-bottom: 9px; }
+
+  .skill-cat {
+    font-family: var(--mono);
+    font-size: 7px;
+    color: var(--accent);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+
+  .skill-pills {
+    font-size: 7.8px;
+    color: var(--s-text);
+    line-height: 1.7;
+  }
+
+  .edu-deg {
+    font-size: 8.5px;
+    font-weight: 600;
+    color: var(--s-text);
+    line-height: 1.4;
+    margin-bottom: 2px;
+  }
+
+  .edu-sub {
+    font-size: 7.5px;
+    color: var(--s-muted);
+    line-height: 1.5;
+  }
+
+  .edu-courses {
+    font-size: 7px;
+    color: var(--s-faint);
+    line-height: 1.6;
+    margin-top: 5px;
+  }
+
+  /* ── MAIN ── */
+  .main {
+    padding: 30px 26px 32px 24px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Summary */
+  .summary {
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+    border-bottom: 0.5px solid var(--rule);
+  }
+
+  .hook {
+    font-family: var(--serif);
+    font-size: 13px;
+    font-style: italic;
+    color: var(--ink);
+    line-height: 1.5;
+    margin-bottom: 6px;
+  }
+
+  .hook em { font-style: normal; color: var(--accent); }
+
+  .sub-hook {
+    font-size: 8px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  /* Section headers */
+  .m-section { margin-bottom: 16px; }
+
+  .m-label {
+    font-family: var(--mono);
+    font-size: 7px;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .m-label::after {
+    content: '';
+    flex: 1;
+    height: 0.5px;
+    background: var(--rule);
+  }
+
+  /* Experience entry */
+  .exp-entry { margin-bottom: 11px; }
+
+  .exp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1px;
+  }
+
+  .exp-title {
+    font-size: 9px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: .01em;
+  }
+
+  .exp-date {
+    font-family: var(--mono);
+    font-size: 7px;
+    color: var(--faint);
+    white-space: nowrap;
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+
+  .exp-sub {
+    font-size: 7.8px;
+    color: var(--accent);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+
+  .exp-sub a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 0.5px solid rgba(200,135,58,0.35);
+  }
+
+  .exp-sub a:hover { color: var(--accent-lt); border-color: var(--accent-lt); }
+
+  .bullets { list-style: none; padding: 0; }
+
+  .bullets li {
+    font-size: 8px;
+    color: var(--muted);
+    line-height: 1.65;
+    padding-left: 10px;
+    position: relative;
+    margin-bottom: 1.5px;
+  }
+
+  .bullets li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--accent);
+    font-size: 7px;
+    top: 1px;
+  }
+
+  .bullets li strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* Project tech stack tags */
+  .tech-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-bottom: 5px;
+  }
+
+  .tag {
+    font-family: var(--mono);
+    font-size: 6.5px;
+    color: var(--s-muted);
+    background: var(--sidebar);
+    padding: 1.5px 5px;
+    border-radius: 2px;
+    letter-spacing: .05em;
+  }
+
+  /* Print */
+  @media print {
+    html, body {
+      background: none;
+      padding: 0;
+      margin: 0;
+    }
+    .page {
+      box-shadow: none;
+      width: 210mm;
+      min-height: 297mm;
+    }
+    @page {
+      size: A4;
+      margin: 0;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ════ SIDEBAR ════ -->
+  <aside class="sidebar">
+
+    <div class="name-block">
+      <div class="name">Eyad<br>Arshad</div>
+      <div class="role-tag">AI Engineer · Computer Vision<br>Systems Programming</div>
+    </div>
+
+    <!-- Contact -->
+    <div class="s-section">
+      <div class="s-label">Contact</div>
+
+      <div class="contact-item">
+        <svg class="contact-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" color="#9A9891"><rect x="2" y="4" width="12" height="9" rx="1.5"/><path d="M2 5l6 5 6-5"/></svg>
+        <a href="mailto:eyadyr1967@gmail.com" class="contact-text">eyadyr1967@gmail.com</a>
+      </div>
+      <div class="contact-item">
+        <svg class="contact-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" color="#9A9891"><path d="M3 2.5c.5 2 1.5 3.5 2.5 4.5S8 9 10 9.5c0 0 .5-1 1.5-1.5 1 0 2 1 2 2s-1 2-2 2C5 12.5 3 6 3 4c0-1 .5-2 1.5-2 1 0 2 1 2 2s-1 1.5-1.5 1.5"/></svg>
+        <span class="contact-text">+92 336 761 1561</span>
+      </div>
+      <div class="contact-item">
+        <svg class="contact-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" color="#9A9891"><path d="M8 1.5A6.5 6.5 0 1 0 8 14.5 6.5 6.5 0 0 0 8 1.5z"/><path d="M8 1.5c-1.5 2-2.5 4-2.5 6.5s1 4.5 2.5 6.5M8 1.5c1.5 2 2.5 4 2.5 6.5s-1 4.5-2.5 6.5M1.5 8h13"/></svg>
+        <a href="https://linkedin.com/in/eyadarshad" class="contact-text" target="_blank">linkedin.com/in/eyadarshad</a>
+      </div>
+      <div class="contact-item">
+        <svg class="contact-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" color="#9A9891"><path d="M8 1.5a6.5 6.5 0 0 0-2.05 12.66c.32.06.44-.14.44-.31v-1.1c-1.8.39-2.18-.87-2.18-.87-.3-.75-.72-.95-.72-.95-.59-.4.04-.39.04-.39.65.05 1 .67 1 .67.58 1 1.52.71 1.89.54.06-.42.23-.71.41-.87-1.44-.16-2.95-.72-2.95-3.2 0-.71.25-1.28.67-1.73-.07-.16-.29-.82.06-1.71 0 0 .55-.18 1.8.67a6.27 6.27 0 0 1 1.64-.22c.56 0 1.12.07 1.64.22 1.25-.85 1.8-.67 1.8-.67.35.89.13 1.55.06 1.71.42.45.67 1.02.67 1.73 0 2.49-1.52 3.04-2.96 3.2.23.2.44.59.44 1.19v1.77c0 .17.12.37.44.31A6.5 6.5 0 0 0 8 1.5z"/></svg>
+        <a href="https://github.com/eyadarshad" class="contact-text" target="_blank">github.com/eyadarshad</a>
+      </div>
+      <div class="contact-item">
+        <svg class="contact-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" color="#9A9891"><path d="M8 8.5A2.5 2.5 0 1 0 8 3.5a2.5 2.5 0 0 0 0 5z"/><path d="M13.5 8c0 3.5-5.5 7-5.5 7S2.5 11.5 2.5 8a5.5 5.5 0 0 1 11 0z"/></svg>
+        <span class="contact-text">Islamabad, Pakistan</span>
+      </div>
+    </div>
+
+    <!-- Skills -->
+    <div class="s-section">
+      <div class="s-label">Technical Skills</div>
+
+      <div class="skill-group">
+        <div class="skill-cat">Languages</div>
+        <div class="skill-pills">Python · C++ · JavaScript · PHP · HTML5 · CSS3</div>
+      </div>
+      <div class="skill-group">
+        <div class="skill-cat">AI / ML</div>
+        <div class="skill-pills">scikit-learn · YOLOv8 · OpenCV · ONNX · PE Analysis</div>
+      </div>
+      <div class="skill-group">
+        <div class="skill-cat">Frameworks</div>
+        <div class="skill-pills">Qt 5/6 · PyQt6 · Flask · Bootstrap · SFML</div>
+      </div>
+      <div class="skill-group">
+        <div class="skill-cat">Databases &amp; Tools</div>
+        <div class="skill-pills">MySQL · Firebase · Git · Arduino · XAMPP</div>
+      </div>
+      <div class="skill-group">
+        <div class="skill-cat">Engines</div>
+        <div class="skill-pills">Unreal Engine 5</div>
+      </div>
+      <div class="skill-group">
+        <div class="skill-cat">Concepts</div>
+        <div class="skill-pills">OOP · Multithreading · Behavior Trees · Procedural Gen · RBAC · REST APIs · IoT · Socket Programming</div>
+      </div>
+    </div>
+
+    <!-- Education -->
+    <div class="s-section">
+      <div class="s-label">Education</div>
+      <div class="edu-deg">B.Sc. Artificial Intelligence</div>
+      <div class="edu-sub">Air University, Islamabad</div>
+      <div class="edu-sub">2024 – 2028 &nbsp;·&nbsp; Year 2 of 4</div>
+      <div class="edu-courses">Data Structures · OOP · Machine Learning · Computer Vision · Computer Networks · Database Systems</div>
+    </div>
+
+    <!-- Interests -->
+    <div class="s-section">
+      <div class="s-label">Interests</div>
+      <div class="skill-pills" style="color:var(--s-muted)">Computer Vision · Game AI<br>IoT Systems · Algorithms<br>Full-Stack Development</div>
+    </div>
+
+  </aside>
+
+  <!-- ════ MAIN ════ -->
+  <main class="main">
+
+    <!-- Summary / Hook -->
+    <div class="summary">
+      <div class="hook">Built a malware detector achieving <em>99.6% accuracy</em> and a live traffic system running YOLOv8 — both deployed, both on GitHub.</div>
+      <div class="sub-hook">AI Engineering student at Air University with 5 shipped projects across machine learning, computer vision, and systems programming in Python and C++. All work is independently architected, version-controlled, and production-deployed.</div>
+    </div>
+
+    <!-- Experience -->
+    <div class="m-section">
+      <div class="m-label">Experience</div>
+
+      <div class="exp-entry">
+        <div class="exp-header">
+          <span class="exp-title">Head of Operations — NeuroScout</span>
+          <span class="exp-date">Jan 2026 – Present</span>
+        </div>
+        <div class="exp-sub">Technology Startup · Islamabad</div>
+        <ul class="bullets">
+          <li>Coordinating a <strong>6-person cross-functional team</strong> (engineering, design, business) while maintaining a full academic course load — weekly sprint cadence, milestone roadmap ownership.</li>
+          <li>Reduced cross-team blockers by introducing a shared Notion workspace and async standup process, cutting weekly sync overhead by ~40%.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Projects -->
+    <div class="m-section">
+      <div class="m-label">Projects</div>
+
+      <!-- HELIX -->
+      <div class="exp-entry">
+        <div class="exp-header">
+          <span class="exp-title">HELIX — AI-Powered Malware Detection System</span>
+          <span class="exp-date"><a href="https://github.com/eyadarshad/HELIX" style="color:var(--faint);font-family:var(--mono);font-size:7px;text-decoration:none;border-bottom:0.5px solid #4a4a4a" target="_blank">github ↗</a></span>
+        </div>
+        <div class="tech-stack">
+          <span class="tag">Python</span><span class="tag">PyQt6</span><span class="tag">scikit-learn</span><span class="tag">pefile</span><span class="tag">x86 Emulation</span><span class="tag">Flask</span>
+        </div>
+        <ul class="bullets">
+          <li>Achieved <strong>99.6% detection accuracy</strong> via a 38-feature ML pipeline fusing 22 static PE attributes (import analysis, section entropy, Authenticode) with 14 behavioral features from a custom x86 instruction emulator.</li>
+          <li>Scaled model quality to all users by building a Flask sync server that accepts user corrections, retrains the model, and propagates updated weights to every connected client automatically.</li>
+          <li>Deployed as a <strong>Windows system-tray background service</strong> monitoring Downloads, Desktop, and Temp directories with real-time threat alerts and one-click quarantine — ships with an installable setup script.</li>
+          <li>Cut false-positive rate on signed binaries by integrating VirusTotal API hash lookups and Authenticode certificate-chain validation.</li>
+        </ul>
+      </div>
+
+      <!-- Traffic -->
+      <div class="exp-entry">
+        <div class="exp-header">
+          <span class="exp-title">Smart Traffic Management System</span>
+          <span class="exp-date"><a href="https://github.com/eyadarshad/Advanced-Traffic-Management-System" style="color:var(--faint);font-family:var(--mono);font-size:7px;text-decoration:none;border-bottom:0.5px solid #4a4a4a" target="_blank">github ↗</a></span>
+        </div>
+        <div class="tech-stack">
+          <span class="tag">C++</span><span class="tag">Qt</span><span class="tag">OpenCV</span><span class="tag">YOLOv8</span><span class="tag">ONNX</span><span class="tag">Arduino</span>
+        </div>
+        <ul class="bullets">
+          <li>Cut average intersection wait time by dynamically adjusting green-light duration (<strong>5–25 s</strong>) across 5 density classes — measured against a fixed-timer baseline.</li>
+          <li>Maintained zero UI frame-drops under simultaneous multi-feed load by separating YOLOv8-ONNX inference from the Qt UI thread via a dedicated worker architecture.</li>
+          <li>Closed the hardware loop with Arduino via QSerialPort for physical signal control; automated violation detection timestamps and saves evidence frames.</li>
+        </ul>
+      </div>
+
+      <!-- Procedural Gen / Death Realm -->
+      <div class="exp-entry">
+        <div class="exp-header">
+          <span class="exp-title">Procedural Generation &amp; AI Systems Engine (UE5)</span>
+          <span class="exp-date"><a href="https://github.com/eyadarshad/DEATH-REALM" style="color:var(--faint);font-family:var(--mono);font-size:7px;text-decoration:none;border-bottom:0.5px solid #4a4a4a" target="_blank">github ↗</a></span>
+        </div>
+        <div class="tech-stack">
+          <span class="tag">Unreal Engine 5</span><span class="tag">C++</span><span class="tag">Blueprints</span><span class="tag">Behavior Trees</span><span class="tag">NavMesh</span>
+        </div>
+        <ul class="bullets">
+          <li>Built a real-time AI navigation system using UE5 Behavior Trees and NavMesh — patrol, chase, and attack states with <strong>dynamic difficulty scaling</strong> tied to player performance metrics.</li>
+          <li>Implemented recursive-backtracking procedural maze generation as the core level system, guaranteeing a unique layout every session.</li>
+          <li>Architected modular C++ gameplay classes (MazeManager, MonsterAI, TrapCell) with Blueprint exposure; validated full save/load persistence across 50+ test cycles.</li>
+        </ul>
+      </div>
+
+      <!-- UtiliSOFT -->
+      <div class="exp-entry">
+        <div class="exp-header">
+          <span class="exp-title">UtiliSOFT — Desktop ERP System</span>
+          <span class="exp-date"><a href="https://github.com/eyadarshad/UtiliSOFT-DB-ManagementSystem" style="color:var(--faint);font-family:var(--mono);font-size:7px;text-decoration:none;border-bottom:0.5px solid #4a4a4a" target="_blank">github ↗</a></span>
+        </div>
+        <div class="tech-stack">
+          <span class="tag">C++</span><span class="tag">Qt 6</span><span class="tag">MySQL</span><span class="tag">Qt Charts</span>
+        </div>
+        <ul class="bullets">
+          <li>Delivered a <strong>7-module retail ERP</strong> (product catalog, stock control, sales, vendor management, employee records, debt tracking, analytics) as a single deployable desktop application.</li>
+          <li>Eliminated SQL injection risk across all input paths using Qt prepared statements within a 3-tier RBAC system (Owner / Manager / Salesman) with full session management.</li>
+        </ul>
+      </div>
+
+      <!-- Enterprise Server -->
+      <div class="exp-entry">
+        <div class="exp-header">
+          <span class="exp-title">Enterprise Client-Server &amp; Cloud Storage System</span>
+        </div>
+        <div class="tech-stack">
+          <span class="tag">C++</span><span class="tag">Socket Programming</span><span class="tag">TCP/IP</span><span class="tag">Client-Server Architecture</span>
+        </div>
+        <ul class="bullets">
+          <li>Implemented TCP/IP client-server system with <strong>multi-client concurrency</strong>, file transfer protocol, and session-token authentication — built from sockets up with no framework, as advanced Computer Networks coursework.</li>
+        </ul>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+</body>
+</html>
