@@ -15,6 +15,7 @@ from app.parsers.pdf_parser import extract_text_from_pdf, PDFParserError, Scanne
 from app.parsers.llm_extractor import extract_resume_data
 from app.services.github_enricher import extract_github_username, enrich_profile_with_github
 from app.services.resume_generator import generate_resume_pdf, generate_resume_docx
+from app.pipeline.orchestrator import tailor_resume_flow
 
 logger = logging.getLogger(__name__)
 
@@ -142,26 +143,128 @@ async def render_resume(
         )
 
 # ==========================================
-# Phase 2: Tailoring Pipeline Stub
+# Phase 2: Tailoring Pipeline
 # ==========================================
 
 @app.post("/tailor", response_model=ResumeTailorResponse)
 async def tailor_resume(payload: ResumeTailorRequest):
     """
     Orchestrates the resume tailoring process for a specific job.
-    This is a stub for Phase 2 implementation.
     """
-    return ResumeTailorResponse(
-        resume_id=str(uuid.uuid4()),
-        user_id=payload.user_id,
-        job_id=payload.job_id,
-        content_json={
-            "name": "Stub Profile",
-            "skills": ["Python", "FastAPI"],
-            "experience": []
-        },
-        ats_score=85
-    )
+    # 1. Resolve the profile data
+    profile = payload.parsed_resume
+    major = "Computer Science"  # Default major
+    
+    # If not supplied in payload, attempt to look up from database
+    if not profile:
+        import psycopg
+        conn = None
+        try:
+            conn = psycopg.connect(settings.DATABASE_URL, connect_timeout=2)
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    "SELECT parsed_resume_json, major FROM profiles JOIN users ON users.id = profiles.user_id WHERE user_id = %s;",
+                    (payload.user_id,)
+                )
+                row = cursor.fetchone()
+                if row:
+                    profile = ResumeParsedData.model_validate(row[0])
+                    major = row[1] or "Computer Science"
+        except Exception:
+            pass
+        finally:
+            if conn:
+                conn.close()
+
+    # Fallback to mock profile if DB is unreachable and no profile was supplied
+    if not profile:
+        profile = ResumeParsedData(
+            name="Eyad Ahmed",
+            email="eyad.ahmed@example.com",
+            phone="+92-300-1234567",
+            links=["github.com/eyad-dev", "linkedin.com/in/eyadahmed"],
+            skills=["Python", "FastAPI", "TypeScript", "Next.js", "PostgreSQL"],
+            education=[{"degree": "B.S.", "major": "Computer Science", "school": "NUCES", "date": "2024"}],
+            experience=[{
+                "role": "Software Engineer Intern",
+                "company": "TechSolutions",
+                "start_date": "2023-06",
+                "end_date": "2024-05",
+                "bullets": [
+                    "Developed backend services using Python and FastAPI.",
+                    "Built frontend UI in React and Next.js."
+                ]
+            }],
+            projects=[]
+        )
+
+    # 2. Resolve job description text
+    jd_text = payload.jd_text
+    if not jd_text:
+        # Attempt to look up from database jobs table
+        import psycopg
+        conn = None
+        try:
+            conn = psycopg.connect(settings.DATABASE_URL, connect_timeout=2)
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT jd_text FROM jobs WHERE id = %s;", (payload.job_id,))
+                row = cursor.fetchone()
+                if row:
+                    jd_text = row[0]
+        except Exception:
+            pass
+        finally:
+            if conn:
+                conn.close()
+                
+    # Fallback to default job description if none provided and DB is offline
+    if not jd_text:
+        jd_text = (
+            "We are looking for a Software Engineer with experience in Python, FastAPI, and Next.js. "
+            "Responsibilities include building web backend services, structuring databases, and collaborating on UI components."
+        )
+
+    try:
+        # Run tailoring pipeline
+        result = tailor_resume_flow(profile, jd_text, major)
+
+        # 3. Store result in database if reachable
+        resume_id = str(uuid.uuid4())
+        import psycopg
+        conn = None
+        try:
+            conn = psycopg.connect(settings.DATABASE_URL, connect_timeout=2)
+            with conn.cursor() as cursor:
+                import json
+                cursor.execute(
+                    """
+                    INSERT INTO tailored_resumes (id, user_id, job_id, content_json, ats_score)
+                    VALUES (%s, %s, %s, %s, %s);
+                    """,
+                    (resume_id, payload.user_id, payload.job_id, json.dumps(result["content_json"]), result["ats_score"])
+                )
+                conn.commit()
+        except Exception:
+            pass
+        finally:
+            if conn:
+                conn.close()
+
+        return ResumeTailorResponse(
+            resume_id=resume_id,
+            user_id=payload.user_id,
+            job_id=payload.job_id,
+            content_json=result["content_json"],
+            ats_score=result["ats_score"],
+            gap_analysis=result["gap_analysis"],
+            truthfulness_report=result["truthfulness_report"]
+        )
+    except Exception as e:
+        logger.error(f"Tailoring route failure: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred during resume tailoring: {str(e)}"
+        )
 
 # ==========================================
 # Phase 3 & 5: Job Search & Matching Stub

@@ -28,6 +28,18 @@ def generate_resume_pdf(data: ResumeParsedData) -> bytes:
 
     skills_html = ", ".join(data.skills)
 
+    anchor_html = ""
+    if data.anchor_line:
+        anchor_html = f'<div class="anchor-line" style="font-style: italic; font-weight: bold; margin-top: 4px; font-size: 11.5pt; color: #333333; text-align: center;">{data.anchor_line}</div>'
+
+    highlights_html = ""
+    if data.highlights_strip:
+        highlights_bullets = "".join([f"<li><strong>{h.get('skill', '')}</strong>: {h.get('relevance_reason', '')}</li>" for h in data.highlights_strip])
+        highlights_html = f"""
+        <div class="section-title">Relevance & Highlights</div>
+        <ul class="bullet-list" style="margin-bottom: 12px;">{highlights_bullets}</ul>
+        """
+
     experience_html = ""
     for exp in data.experience:
         bullets_list = "".join([f"<li>{b}</li>" for b in exp.get("bullets", [])])
@@ -165,7 +177,10 @@ def generate_resume_pdf(data: ResumeParsedData) -> bytes:
             <div class="contact">
                 {data.email} {f'| {data.phone}' if data.phone else ''} {f'| {links_html}' if links_html else ''}
             </div>
+            {anchor_html}
         </div>
+
+        {highlights_html}
 
         {f'<div class="section-title">Skills</div><div class="skills">{skills_html}</div>' if skills_html else ''}
 
@@ -217,6 +232,16 @@ def generate_resume_docx(data: ResumeParsedData) -> bytes:
     contact_parts.extend(data.links)
     p_contact.add_run("  |  ".join(contact_parts))
 
+    # Anchor Line
+    if data.anchor_line:
+        p_anchor = doc.add_paragraph()
+        p_anchor.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_anchor.paragraph_format.space_after = Pt(8)
+        run_anchor = p_anchor.add_run(data.anchor_line)
+        run_anchor.italic = True
+        run_anchor.bold = True
+        run_anchor.font.size = Pt(11)
+
     # Helper to add section headings with bottom border lines
     def add_section_heading(text: str):
         p = doc.add_paragraph()
@@ -229,6 +254,16 @@ def generate_resume_docx(data: ResumeParsedData) -> bytes:
         # Insert a bottom border under heading paragraph
         pBdr = parse_xml(f'<w:pBdr {nsdecls("w")}><w:bottom w:val="single" w:sz="6" w:space="1" w:color="000000"/></w:pBdr>')
         p._p.get_or_add_pPr().append(pBdr)
+
+    # Highlights Strip Section
+    if data.highlights_strip:
+        add_section_heading("Relevance & Highlights")
+        for h in data.highlights_strip:
+            p_hl = doc.add_paragraph(style='List Bullet')
+            p_hl.paragraph_format.space_after = Pt(2)
+            run_skill = p_hl.add_run(h.get("skill", "") + ": ")
+            run_skill.bold = True
+            p_hl.add_run(h.get("relevance_reason", ""))
 
     # 1. Skills Section
     if data.skills:

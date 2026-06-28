@@ -38,7 +38,7 @@ def test_tailor_stub_endpoint():
     assert data["job_id"] == "job-456"
     assert "resume_id" in data
     assert "content_json" in data
-    assert data["ats_score"] == 85
+    assert "ats_score" in data
 
 def test_jobs_search_stub_endpoint():
     payload = {

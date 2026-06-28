@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
-import { Upload, FileText, CheckCircle2, AlertCircle, Github, Download, Award, Loader2 } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertCircle, Github, Download, Award, Loader2, Sparkles, RefreshCw } from "lucide-react";
+import TailorPanel from "./TailorPanel";
+import TruthfulnessGate from "./TruthfulnessGate";
 
 interface ResumeParsedData {
   name: string;
@@ -28,6 +30,11 @@ interface ResumeParsedData {
     name: string;
     link?: string;
     bullets: string[];
+  }>;
+  anchor_line?: string;
+  highlights_strip?: Array<{
+    skill: string;
+    relevance_reason: string;
   }>;
 }
 
@@ -56,6 +63,31 @@ export default function ResumeUpload() {
 
   const [activeTab, setActiveTab] = useState<"experience" | "projects" | "education" | "skills" | "github">("experience");
   const [downloading, setDownloading] = useState<string | null>(null);
+
+  // Tailoring Pipeline States
+  const [tailorStep, setTailorStep] = useState<"idle" | "input" | "gate" | "done">("idle");
+  const [tailoredResume, setTailoredResume] = useState<ResumeParsedData | null>(null);
+  const [gapAnalysis, setGapAnalysis] = useState<any | null>(null);
+  const [truthfulnessReport, setTruthfulnessReport] = useState<any | null>(null);
+  const [atsScore, setAtsScore] = useState<number>(0);
+
+  const handleTailorSuccess = (
+    tailored: ResumeParsedData,
+    gaps: any,
+    truth: any,
+    score: number
+  ) => {
+    setTailoredResume(tailored);
+    setGapAnalysis(gaps);
+    setTruthfulnessReport(truth);
+    setAtsScore(score);
+    setTailorStep("gate");
+  };
+
+  const handleFinalApprove = (finalized: ResumeParsedData) => {
+    setTailoredResume(finalized);
+    setTailorStep("done");
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -100,10 +132,11 @@ export default function ResumeUpload() {
     setDownloading(format);
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+      const dataToRender = tailoredResume || intakeResult.parsed_resume;
       const res = await fetch(`${backendUrl}/render?format=${format}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(intakeResult.parsed_resume),
+        body: JSON.stringify(dataToRender),
       });
 
       if (!res.ok) {
@@ -126,7 +159,7 @@ export default function ResumeUpload() {
     }
   };
 
-  const resume = intakeResult?.parsed_resume;
+  const resume = tailoredResume || intakeResult?.parsed_resume;
   const github = intakeResult?.github_enriched;
 
   return (
@@ -185,15 +218,47 @@ export default function ResumeUpload() {
         </form>
       )}
 
-      {/* Result Profile view */}
-      {intakeResult && resume && (
-        <div className="p-6 md:p-8 rounded-3xl border border-slate-800 bg-slate-900/30 backdrop-blur-2xl space-y-8">
+      {/* 1. Tailor Input Panel */}
+      {intakeResult && resume && tailorStep === "input" && (
+        <TailorPanel
+          user_id={intakeResult.user_id}
+          parsed_resume={intakeResult.parsed_resume}
+          onTailorSuccess={handleTailorSuccess}
+        />
+      )}
+
+      {/* 2. Truthfulness Gate panel */}
+      {intakeResult && resume && tailorStep === "gate" && gapAnalysis && truthfulnessReport && tailoredResume && (
+        <TruthfulnessGate
+          atsScore={atsScore}
+          gapAnalysis={gapAnalysis}
+          truthfulnessReport={truthfulnessReport}
+          tailoredResume={tailoredResume}
+          onFinalApprove={handleFinalApprove}
+          onReset={() => setTailorStep("input")}
+        />
+      )}
+
+      {/* 3. Result Profile view (Idle or Finalized Done state) */}
+      {intakeResult && resume && (tailorStep === "idle" || tailorStep === "done") && (
+        <div className="p-6 md:p-8 rounded-3xl border border-slate-800 bg-slate-900/30 backdrop-blur-2xl space-y-8 animate-fade-in">
           {/* Header Card */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-800">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                <h2 className="text-2xl font-bold text-white">{resume.name}</h2>
+                {tailorStep === "done" ? (
+                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                ) : (
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                )}
+                <h2 className="text-2xl font-bold text-white">
+                  {resume.name}
+                  {tailorStep === "done" && (
+                    <span className="ml-3 text-xs font-semibold text-indigo-400 border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Tailored (ATS: {atsScore}%)
+                    </span>
+                  )}
+                </h2>
               </div>
               <p className="text-sm text-slate-400">{resume.email} {resume.phone ? `| ${resume.phone}` : ""}</p>
               <div className="flex flex-wrap gap-2 mt-2">
@@ -209,10 +274,33 @@ export default function ResumeUpload() {
                   </a>
                 ))}
               </div>
+              {resume.anchor_line && (
+                <div className="mt-3 text-sm font-medium italic text-indigo-300/90 border-l-2 border-indigo-500/60 pl-3 py-0.5">
+                  &ldquo;{resume.anchor_line}&rdquo;
+                </div>
+              )}
             </div>
 
             {/* Document Render Controls */}
             <div className="flex gap-3">
+              {tailorStep === "idle" && (
+                <button
+                  onClick={() => setTailorStep("input")}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Tailor for Job
+                </button>
+              )}
+              {tailorStep === "done" && (
+                <button
+                  onClick={() => setTailorStep("input")}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Re-Tailor
+                </button>
+              )}
               <button
                 onClick={() => handleDownload("pdf")}
                 disabled={!!downloading}
@@ -241,6 +329,11 @@ export default function ResumeUpload() {
                 onClick={() => {
                   setFile(null);
                   setIntakeResult(null);
+                  setTailorStep("idle");
+                  setTailoredResume(null);
+                  setGapAnalysis(null);
+                  setTruthfulnessReport(null);
+                  setAtsScore(0);
                 }}
                 className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-700 text-slate-400 hover:bg-slate-800 transition"
               >
@@ -248,6 +341,20 @@ export default function ResumeUpload() {
               </button>
             </div>
           </div>
+
+          {/* Highlights strip callout */}
+          {resume.highlights_strip && resume.highlights_strip.length > 0 && (
+            <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 space-y-2 animate-fade-in">
+              <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Relevance & Highlights</h4>
+              <ul className="grid md:grid-cols-2 gap-3 text-xs text-slate-300 pl-4 list-disc font-light">
+                {resume.highlights_strip.map((hl: any, idx: number) => (
+                  <li key={idx}>
+                    <span className="font-semibold text-slate-200">{hl.skill}</span>: {hl.relevance_reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Navigation Tabs */}
           <div className="flex border-b border-slate-800 overflow-x-auto whitespace-nowrap">
@@ -289,7 +396,7 @@ export default function ResumeUpload() {
                         </span>
                       </div>
                       <ul className="list-disc pl-5 text-sm text-slate-300 space-y-1">
-                        {exp.bullets.map((bullet, bIdx) => (
+                        {exp.bullets.map((bullet: string, bIdx: number) => (
                           <li key={bIdx}>{bullet}</li>
                         ))}
                       </ul>
@@ -321,7 +428,7 @@ export default function ResumeUpload() {
                         )}
                       </div>
                       <ul className="list-disc pl-5 text-sm text-slate-300 space-y-1">
-                        {proj.bullets.map((bullet, bIdx) => (
+                        {proj.bullets.map((bullet: string, bIdx: number) => (
                           <li key={bIdx}>{bullet}</li>
                         ))}
                       </ul>
