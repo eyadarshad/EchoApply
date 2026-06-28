@@ -19,7 +19,7 @@ class LLMClient:
             self.client = genai.Client(api_key=self.api_key)
         else:
             self.client = None
-            logger.warning("GEMINI_API_KEY is unset or configured with a mock value. Live API calls will fail.")
+            logger.info("GEMINI_API_KEY is unset or configured with a mock value. Local heuristic engine will be used for resume extraction and tailoring.")
 
     def get_model_name(self, model_type: str = "flash") -> str:
         """Helper to get current model name configuration."""
@@ -41,10 +41,8 @@ class LLMClient:
         Includes a self-correction retry loop that feeds Pydantic validation errors back to the model.
         """
         if not self.client:
-            raise ValueError(
-                "GEMINI_API_KEY is unset or configured with a mock value. "
-                "A valid Gemini API key is required to make live LLM calls."
-            )
+            from app.services.heuristic_parser import handle_heuristic_fallback
+            return handle_heuristic_fallback(prompt, response_schema)
 
         model_name = self.get_model_name(model_type)
         
