@@ -31,41 +31,45 @@ def run_scratch_test():
         "projects": []
     }
     
-    # Define job description context
-    payload = {
-        "user_id": "test-user-123",
-        "job_id": "test-job-456",
-        "jd_text": "We want a Software Engineer to optimize PostgreSQL databases, write FastAPI backend APIs, and manage Kubernetes clusters.",
-        "parsed_resume": parsed_resume
+    jds = {
+        "STANDARD MATCH (FastAPI, PostgreSQL, Kubernetes)": "We want a Software Engineer to optimize PostgreSQL databases, write FastAPI backend APIs, and manage Kubernetes clusters.",
+        "STRONG MATCH (Python, FastAPI, React)": "We want a Python developer with FastAPI and React frontend experience to build fullstack web applications.",
+        "WEAK MATCH (Java, Spring Boot, AWS, MySQL, Terraform)": "Seeking a Senior Java Developer with Spring Boot, AWS deployment, MySQL database tuning, and Terraform infrastructure management experience."
     }
     
-    print("Sending tailor request to local server...")
-    try:
-        response = httpx.post(url, json=payload, timeout=30.0)
-        print(f"Status Code: {response.status_code}")
+    for name, jd_text in jds.items():
+        print(f"\n==================================================================")
+        print(f" RUNNING SCENARIO: {name}")
+        print(f"==================================================================")
         
-        if response.status_code == 200:
-            result = response.json()
-            print("\n=== ATS Score ===")
-            print(f"{result['ats_score']}%")
+        payload = {
+            "user_id": "test-user-123",
+            "job_id": "test-job-456",
+            "jd_text": jd_text,
+            "parsed_resume": parsed_resume
+        }
+        
+        try:
+            response = httpx.post(url, json=payload, timeout=30.0)
+            print(f"Status Code: {response.status_code}")
             
-            print("\n=== Tagline (Anchor Line) ===")
-            print(result['content_json'].get('anchor_line'))
-            
-            print("\n=== Highlights Strip ===")
-            print(json.dumps(result['content_json'].get('highlights_strip'), indent=2))
-            
-            print("\n=== Gap Analysis ===")
-            print(f"Matched Skills: {result['gap_analysis']['matched_skills']}")
-            print(f"Missing Skills: {result['gap_analysis']['missing_skills']}")
-            
-            print("\n=== Truthfulness Report ===")
-            print(f"Is Fabricated: {result['truthfulness_report']['is_fabricated']}")
-            print(f"Report: {json.dumps(result['truthfulness_report']['verification_report'], indent=2)}")
-        else:
-            print(f"Error: {response.text}")
-    except Exception as e:
-        print(f"Connection failed: {str(e)}")
+            if response.status_code == 200:
+                result = response.json()
+                print(f"ATS Match Score: {result['ats_score']}%")
+                print(f"Tagline: {result['content_json'].get('anchor_line')}")
+                print(f"Matched Skills: {result['gap_analysis']['matched_skills']}")
+                print(f"Missing Skills: {result['gap_analysis']['missing_skills']}")
+                
+                # Check for partial matches
+                partials = result['gap_analysis'].get('partial_matches', [])
+                if partials:
+                    print(f"Partial Matches: {[p['jd_skill'] + ' (Candidate: ' + p['user_skill'] + ')' for p in partials]}")
+                
+                print(f"Is Fabricated: {result['truthfulness_report']['is_fabricated']}")
+            else:
+                print(f"Error: {response.text}")
+        except Exception as e:
+            print(f"Connection failed: {str(e)}")
 
 if __name__ == "__main__":
     run_scratch_test()
