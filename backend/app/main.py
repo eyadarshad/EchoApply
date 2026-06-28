@@ -11,8 +11,8 @@ from app.schemas import (
     ApplicationSubmitRequest, ApplicationSubmitResponse
 )
 from app.config import settings
-from app.parsers.pdf_parser import extract_text_from_pdf, PDFParserError, ScannedPDFError
-from app.parsers.llm_extractor import extract_resume_data
+from app.parsers.pdf_parser import extract_text_from_pdf, PDFParserError, ScannedPDFError, render_pdf_to_images
+from app.parsers.llm_extractor import extract_resume_data, extract_resume_from_images
 from app.services.github_enricher import extract_github_username, enrich_profile_with_github
 from app.services.resume_generator import generate_resume_pdf, generate_resume_docx
 from app.pipeline.orchestrator import tailor_resume_flow
@@ -71,10 +71,18 @@ async def resume_intake(file: UploadFile = File(...)):
         file_bytes = await file.read()
         
         # 1. Parse PDF (with OCR fallback)
-        raw_text = extract_text_from_pdf(file_bytes)
-        
-        # 2. LLM Structured Extraction
-        parsed_data = extract_resume_data(raw_text)
+        try:
+            raw_text = extract_text_from_pdf(file_bytes)
+            # 2. LLM Structured Extraction
+            parsed_data = extract_resume_data(raw_text)
+        except ScannedPDFError as scanned_err:
+            logger.info(f"Text-based parsing or Tesseract failed: {str(scanned_err)}. Falling back to Gemini Vision...")
+            # Render PDF pages to images
+            images = render_pdf_to_images(file_bytes)
+            if not images:
+                raise scanned_err
+            # Multimodal structured extraction directly from images
+            parsed_data = extract_resume_from_images(images)
         
         # 3. GitHub Profile Enrichment
         github_username = extract_github_username(parsed_data.links)
@@ -89,13 +97,6 @@ async def resume_intake(file: UploadFile = File(...)):
             user_id=user_id,
             parsed_resume=parsed_data,
             github_enriched=github_enriched
-        )
-
-    except ScannedPDFError as e:
-        logger.error(f"Scanned PDF Error: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e)
         )
     except PDFParserError as e:
         logger.error(f"PDF Parser Error: {str(e)}")
