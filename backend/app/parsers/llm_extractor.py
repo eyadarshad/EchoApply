@@ -37,7 +37,7 @@ def extract_resume_data(raw_text: str) -> ResumeParsedData:
         logger.error(f"Failed to parse resume structured data: {str(e)}")
         raise e
 
-def extract_resume_from_images(images: list) -> ResumeParsedData:
+def extract_resume_from_images(images: list, filename: str = "") -> ResumeParsedData:
     """
     Directly extracts structured resume data from rendered page images
     using Gemini's multimodal (Vision) capabilities.
@@ -54,6 +54,8 @@ def extract_resume_from_images(images: list) -> ResumeParsedData:
         "Strictly conform to the requested JSON schema. If details like experience or projects are "
         "not present, leave those arrays empty."
     )
+    if filename:
+        prompt += f"\nNote: Source filename is '{filename}'."
     
     try:
         logger.info("Extracting structured resume data via Gemini Vision multimodal call...")

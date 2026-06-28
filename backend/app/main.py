@@ -82,7 +82,7 @@ async def resume_intake(file: UploadFile = File(...)):
             if not images:
                 raise scanned_err
             # Multimodal structured extraction directly from images
-            parsed_data = extract_resume_from_images(images)
+            parsed_data = extract_resume_from_images(images, filename=file.filename)
         
         # 3. GitHub Profile Enrichment
         github_username = extract_github_username(parsed_data.links)

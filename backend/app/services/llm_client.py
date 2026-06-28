@@ -229,66 +229,222 @@ class LLMClient:
             )
 
         elif schema_name == "ResumeParsedData":
-            return response_schema(
-                name="Eyad Arshad",
-                email="eyadyr1967@gmail.com",
-                phone="+92 336 761 1561",
-                links=["github.com/eyadarshad", "linkedin.com/in/eyadarshad"],
-                skills=[
-                    "Python", "C++", "JavaScript", "PHP", "HTML5", "CSS3",
-                    "scikit-learn", "YOLOv8", "OpenCV", "ONNX", "PE Analysis",
-                    "Qt 5/6", "PyQt6", "Flask", "Bootstrap", "SFML",
-                    "MySQL", "Firebase", "Git", "Arduino", "XAMPP", "Unreal Engine 5"
-                ],
-                education=[{
-                    "degree": "B.Sc. Artificial Intelligence",
-                    "school": "Air University, Islamabad",
-                    "date": "2024 – 2028 (Year 2 of 4)"
-                }],
-                experience=[
-                    {
-                        "role": "Head of Operations",
-                        "company": "NeuroScout Startup",
-                        "start_date": "2026-01",
+            print(f"[DEBUG MOCK] prompt: {prompt}")
+            print(f"[DEBUG MOCK] text_lower: {text_lower}")
+            # Check if this is Eyad Arshad's resume
+            is_eyad = False
+            if "eyad" in text_lower or "arshad" in text_lower or "neuroscout" in text_lower:
+                is_eyad = True
+                
+            print(f"[DEBUG MOCK] is_eyad: {is_eyad}")
+            if is_eyad:
+                return response_schema(
+                    name="Eyad Arshad",
+                    email="eyadyr1967@gmail.com",
+                    phone="+92 336 761 1561",
+                    links=["github.com/eyadarshad", "linkedin.com/in/eyadarshad"],
+                    skills=[
+                        "Python", "C++", "JavaScript", "PHP", "HTML5", "CSS3",
+                        "scikit-learn", "YOLOv8", "OpenCV", "ONNX", "PE Analysis",
+                        "Qt 5/6", "PyQt6", "Flask", "Bootstrap", "SFML",
+                        "MySQL", "Firebase", "Git", "Arduino", "XAMPP", "Unreal Engine 5"
+                    ],
+                    education=[{
+                        "degree": "B.Sc. Artificial Intelligence",
+                        "school": "Air University, Islamabad",
+                        "date": "2024 – 2028 (Year 2 of 4)"
+                    }],
+                    experience=[
+                        {
+                            "role": "Head of Operations",
+                            "company": "NeuroScout Startup",
+                            "start_date": "2026-01",
+                            "end_date": "Present",
+                            "bullets": [
+                                "Coordinating a 6-person cross-functional team (engineering, design, business) while maintaining a full academic course load.",
+                                "Reduced cross-team blockers by introducing a shared Notion workspace and async standup process, cutting weekly sync overhead by ~40%."
+                            ]
+                        }
+                    ],
+                    projects=[
+                        {
+                            "name": "HELIX — AI-Powered Malware Detection System",
+                            "bullets": [
+                                "Achieved 99.6% detection accuracy via a 38-feature ML pipeline fusing 22 static PE attributes with 14 behavioral features from a custom x86 instruction emulator.",
+                                "Scaled model quality to all users by building a Flask sync server that retrains the model and propagates updated weights automatically.",
+                                "Deployed as a Windows system-tray background service monitoring Downloads, Desktop, and Temp directories with real-time threat alerts."
+                            ]
+                        },
+                        {
+                            "name": "Smart Traffic Management System",
+                            "bullets": [
+                                "Cut average intersection wait time by dynamically adjusting green-light duration (5–25 s) across 5 density classes.",
+                                "Separated YOLOv8-ONNX inference from the Qt UI thread via a dedicated worker architecture to maintain zero UI frame-drops.",
+                                "Closed the hardware loop with Arduino via QSerialPort for physical signal control and automated violation detection."
+                            ]
+                        },
+                        {
+                            "name": "Procedural Generation & AI Systems Engine (UE5)",
+                            "bullets": [
+                                "Built a real-time AI navigation system using UE5 Behavior Trees and NavMesh with dynamic difficulty scaling.",
+                                "Implemented recursive-backtracking procedural maze generation as the core level system."
+                            ]
+                        },
+                        {
+                            "name": "UtiliSOFT — Desktop ERP System",
+                            "bullets": [
+                                "Delivered a 7-module retail ERP (catalog, stock, sales, vendors, employee records) as a single deployable desktop application.",
+                                "Eliminated SQL injection risk using prepare statements within a 3-tier RBAC system."
+                            ]
+                        }
+                    ]
+                )
+            
+            # If not Eyad's resume, parse details dynamically from raw text if present in prompt
+            raw_text = ""
+            text_start = prompt.find("--- RAW RESUME TEXT ---")
+            if text_start != -1:
+                raw_text = prompt[text_start + len("--- RAW RESUME TEXT ---"):].strip()
+            
+            name = "Unknown Candidate"
+            email = "unknown@example.com"
+            phone = None
+            links = []
+            skills = []
+            education = []
+            experience = []
+            projects = []
+            
+            if raw_text:
+                lines = [line.strip() for line in raw_text.split("\n") if line.strip()]
+                
+                email_match = re.search(r"[\w\.-]+@[\w\.-]+\.\w+", raw_text)
+                if email_match:
+                    email = email_match.group(0)
+                
+                phone_match = re.search(r"\(?\+?[0-9]{1,4}\)?[-.\s]?\(?[0-9]{1,3}\)?[-.\s]?[0-9]{3,4}[-.\s]?[0-9]{3,4}", raw_text)
+                if phone_match:
+                    phone = phone_match.group(0)
+                
+                if lines:
+                    for line in lines[:5]:
+                        if "@" not in line and not any(kw in line.lower() for kw in ["resume", "curriculum", "cv", "contact", "phone", "email", "http"]):
+                            name = line
+                            break
+                
+                links = re.findall(r"(?:https?://)?(?:www\.)?(?:github\.com|linkedin\.com)/[a-zA-Z0-9_-]+", raw_text)
+                
+                skills_section = False
+                for line in lines:
+                    if any(sec in line.lower() for sec in ["skills", "technical skills", "technologies", "expertise"]):
+                        skills_section = True
+                        continue
+                    if skills_section:
+                        if any(sec in line.lower() for sec in ["experience", "education", "projects", "employment", "history"]):
+                            skills_section = False
+                            break
+                        parts = re.split(r"[,·|•\s]|\s-\s", line)
+                        for p in parts:
+                            p_clean = p.strip(" .·|•,()[]")
+                            if len(p_clean) > 1 and p_clean[0].isupper() and p_clean.lower() not in ["and", "or", "with", "for", "to", "in", "of", "on", "at", "by", "a", "an", "the"]:
+                                skills.append(p_clean)
+                
+                skills = list(dict.fromkeys(skills))
+                if not skills:
+                    common_techs = ["Python", "JavaScript", "TypeScript", "React", "Node", "HTML", "CSS", "SQL", "C++", "Java", "Go", "Docker", "Kubernetes", "AWS"]
+                    for tech in common_techs:
+                        if re.search(r"\b" + re.escape(tech) + r"\b", raw_text, re.IGNORECASE):
+                            skills.append(tech)
+                
+                current_section = None
+                for line in lines:
+                    line_lower = line.lower()
+                    if any(sec in line_lower for sec in ["experience", "employment", "work history", "professional experience"]):
+                        current_section = "experience"
+                        continue
+                    elif any(sec in line_lower for sec in ["projects", "personal projects", "academic projects"]):
+                        current_section = "projects"
+                        continue
+                    elif any(sec in line_lower for sec in ["education", "academic qualification"]):
+                        current_section = "education"
+                        continue
+                    elif any(sec in line_lower for sec in ["skills", "interests", "languages", "certifications"]):
+                        current_section = None
+                        continue
+                    
+                    if current_section == "experience":
+                        if line.startswith(("-", "—", "*", "•")):
+                            bullet = line.lstrip("-—*• ").strip()
+                            if experience:
+                                experience[-1]["bullets"].append(bullet)
+                        else:
+                            experience.append({
+                                "role": line,
+                                "company": "Company",
+                                "start_date": "2023",
+                                "end_date": "Present",
+                                "bullets": []
+                            })
+                    elif current_section == "projects":
+                        if line.startswith(("-", "—", "*", "•")):
+                            bullet = line.lstrip("-—*• ").strip()
+                            if projects:
+                                projects[-1]["bullets"].append(bullet)
+                        else:
+                            projects.append({
+                                "name": line,
+                                "bullets": []
+                            })
+                    elif current_section == "education":
+                        education.append({
+                            "degree": line,
+                            "school": "University",
+                            "date": "2024"
+                        })
+                
+                experience = [exp for exp in experience if exp["bullets"]]
+                projects = [proj for proj in projects if proj["bullets"]]
+                
+                if not experience and lines:
+                    experience = [{
+                        "role": "Professional",
+                        "company": "Organization",
+                        "start_date": "2023",
                         "end_date": "Present",
-                        "bullets": [
-                            "Coordinating a 6-person cross-functional team (engineering, design, business) while maintaining a full academic course load.",
-                            "Reduced cross-team blockers by introducing a shared Notion workspace and async standup process, cutting weekly sync overhead by ~40%."
-                        ]
-                    }
-                ],
-                projects=[
-                    {
-                        "name": "HELIX — AI-Powered Malware Detection System",
-                        "bullets": [
-                            "Achieved 99.6% detection accuracy via a 38-feature ML pipeline fusing 22 static PE attributes with 14 behavioral features from a custom x86 instruction emulator.",
-                            "Scaled model quality to all users by building a Flask sync server that retrains the model and propagates updated weights automatically.",
-                            "Deployed as a Windows system-tray background service monitoring Downloads, Desktop, and Temp directories with real-time threat alerts."
-                        ]
-                    },
-                    {
-                        "name": "Smart Traffic Management System",
-                        "bullets": [
-                            "Cut average intersection wait time by dynamically adjusting green-light duration (5–25 s) across 5 density classes.",
-                            "Separated YOLOv8-ONNX inference from the Qt UI thread via a dedicated worker architecture to maintain zero UI frame-drops.",
-                            "Closed the hardware loop with Arduino via QSerialPort for physical signal control and automated violation detection."
-                        ]
-                    },
-                    {
-                        "name": "Procedural Generation & AI Systems Engine (UE5)",
-                        "bullets": [
-                            "Built a real-time AI navigation system using UE5 Behavior Trees and NavMesh with dynamic difficulty scaling.",
-                            "Implemented recursive-backtracking procedural maze generation as the core level system."
-                        ]
-                    },
-                    {
-                        "name": "UtiliSOFT — Desktop ERP System",
-                        "bullets": [
-                            "Delivered a 7-module retail ERP (catalog, stock, sales, vendors, employee records) as a single deployable desktop application.",
-                            "Eliminated SQL injection risk using prepare statements within a 3-tier RBAC system."
-                        ]
-                    }
-                ]
+                        "bullets": [l for l in lines if len(l) > 30][:3]
+                    }]
+            
+            # Check if source filename is in prompt to extract name dynamically
+            print(f"[DEBUG MOCK] filename check in text_lower: {'filename is ' in text_lower}")
+            if "filename is '" in text_lower:
+                filename_match = re.search(r"filename is '([^']+)'", prompt, re.IGNORECASE)
+                print(f"[DEBUG MOCK] filename_match: {filename_match}")
+                if filename_match:
+                    fname = filename_match.group(1)
+                    print(f"[DEBUG MOCK] fname: {fname}, raw_text: {raw_text}")
+                    if not raw_text:
+                        display_name = fname.replace("-Resume.pdf", "").replace("-resume.pdf", "").replace(".pdf", "").replace("_", " ").replace("-", " ")
+                        display_name = " ".join([w.capitalize() for w in display_name.split()])
+                        name = display_name if len(display_name) > 3 else "Unknown Candidate"
+                        email = f"{name.lower().replace(' ', '.')}@example.com"
+                        skills = ["Python", "FastAPI"]
+                        experience = [{
+                            "role": "Software Engineer",
+                            "company": "Tech Corp",
+                            "start_date": "2024",
+                            "end_date": "Present",
+                            "bullets": ["Developed and maintained code for web applications."]
+                        }]
+            
+            return response_schema(
+                name=name,
+                email=email,
+                phone=phone,
+                links=links,
+                skills=skills,
+                education=education,
+                experience=experience,
+                projects=projects
             )
 
         # Basic fallback for other schemas
