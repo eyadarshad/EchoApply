@@ -110,3 +110,19 @@ def extract_blocks_from_pdf(pdf_bytes: bytes) -> List[Dict[str, Any]]:
                     "block_no": b[5]
                 })
     return blocks_data
+
+def render_pdf_to_images(pdf_bytes: bytes) -> List[Any]:
+    """
+    Renders PDF pages to PIL Images.
+    """
+    import io
+    from PIL import Image
+    
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    images = []
+    for page in doc:
+        pix = page.get_pixmap(dpi=150)
+        img_data = pix.tobytes("png")
+        img = Image.open(io.BytesIO(img_data))
+        images.append(img)
+    return images

@@ -36,3 +36,35 @@ def extract_resume_data(raw_text: str) -> ResumeParsedData:
     except Exception as e:
         logger.error(f"Failed to parse resume structured data: {str(e)}")
         raise e
+
+def extract_resume_from_images(images: list) -> ResumeParsedData:
+    """
+    Directly extracts structured resume data from rendered page images
+    using Gemini's multimodal (Vision) capabilities.
+    """
+    system_instruction = (
+        "You are an expert multimodal ATS resume parser. Analyze the provided resume page images "
+        "and return structured data matching the schema. Extract name, email, contact links, "
+        "education, experience, skills, and projects accurately. "
+        "If name or email is missing, return fallback values 'Unknown Candidate' and 'unknown@example.com'."
+    )
+    
+    prompt = (
+        "Please carefully read all pages of this resume and extract candidate profile details. "
+        "Strictly conform to the requested JSON schema. If details like experience or projects are "
+        "not present, leave those arrays empty."
+    )
+    
+    try:
+        logger.info("Extracting structured resume data via Gemini Vision multimodal call...")
+        parsed_data = llm_client.generate_structured(
+            prompt=prompt,
+            response_schema=ResumeParsedData,
+            model_type="flash",
+            system_instruction=system_instruction,
+            images=images
+        )
+        return parsed_data
+    except Exception as e:
+        logger.error(f"Multimodal parsing failed: {str(e)}")
+        raise e

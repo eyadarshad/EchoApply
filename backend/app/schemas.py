@@ -24,8 +24,8 @@ class EchoResponse(BaseModel):
 # ==========================================
 
 class ResumeParsedData(BaseModel):
-    name: str
-    email: str
+    name: str = "Unknown Candidate"
+    email: str = "unknown@example.com"
     phone: Optional[str] = None
     links: List[str] = []
     education: List[Dict[str, Any]] = []

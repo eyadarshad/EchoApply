@@ -231,28 +231,64 @@ class LLMClient:
         elif schema_name == "ResumeParsedData":
             return response_schema(
                 name="Eyad Arshad",
-                email="eyad.arshad@example.com",
-                phone="+92-300-1234567",
-                links=["github.com/eyad-dev"],
-                skills=["Python", "FastAPI", "React", "TypeScript", "PostgreSQL"],
+                email="eyadyr1967@gmail.com",
+                phone="+92 336 761 1561",
+                links=["github.com/eyadarshad", "linkedin.com/in/eyadarshad"],
+                skills=[
+                    "Python", "C++", "JavaScript", "PHP", "HTML5", "CSS3",
+                    "scikit-learn", "YOLOv8", "OpenCV", "ONNX", "PE Analysis",
+                    "Qt 5/6", "PyQt6", "Flask", "Bootstrap", "SFML",
+                    "MySQL", "Firebase", "Git", "Arduino", "XAMPP", "Unreal Engine 5"
+                ],
                 education=[{
-                    "degree": "B.S. Computer Science",
-                    "school": "NUCES",
-                    "date": "2024"
+                    "degree": "B.Sc. Artificial Intelligence",
+                    "school": "Air University, Islamabad",
+                    "date": "2024 – 2028 (Year 2 of 4)"
                 }],
                 experience=[
                     {
-                        "role": "Backend Engineer Intern",
-                        "company": "TechCorp",
-                        "start_date": "2023-06",
-                        "end_date": "2023-12",
+                        "role": "Head of Operations",
+                        "company": "NeuroScout Startup",
+                        "start_date": "2026-01",
+                        "end_date": "Present",
                         "bullets": [
-                            "Developed backend services using Python and FastAPI.",
-                            "Optimized database queries decreasing latency by 20%."
+                            "Coordinating a 6-person cross-functional team (engineering, design, business) while maintaining a full academic course load.",
+                            "Reduced cross-team blockers by introducing a shared Notion workspace and async standup process, cutting weekly sync overhead by ~40%."
                         ]
                     }
                 ],
-                projects=[]
+                projects=[
+                    {
+                        "name": "HELIX — AI-Powered Malware Detection System",
+                        "bullets": [
+                            "Achieved 99.6% detection accuracy via a 38-feature ML pipeline fusing 22 static PE attributes with 14 behavioral features from a custom x86 instruction emulator.",
+                            "Scaled model quality to all users by building a Flask sync server that retrains the model and propagates updated weights automatically.",
+                            "Deployed as a Windows system-tray background service monitoring Downloads, Desktop, and Temp directories with real-time threat alerts."
+                        ]
+                    },
+                    {
+                        "name": "Smart Traffic Management System",
+                        "bullets": [
+                            "Cut average intersection wait time by dynamically adjusting green-light duration (5–25 s) across 5 density classes.",
+                            "Separated YOLOv8-ONNX inference from the Qt UI thread via a dedicated worker architecture to maintain zero UI frame-drops.",
+                            "Closed the hardware loop with Arduino via QSerialPort for physical signal control and automated violation detection."
+                        ]
+                    },
+                    {
+                        "name": "Procedural Generation & AI Systems Engine (UE5)",
+                        "bullets": [
+                            "Built a real-time AI navigation system using UE5 Behavior Trees and NavMesh with dynamic difficulty scaling.",
+                            "Implemented recursive-backtracking procedural maze generation as the core level system."
+                        ]
+                    },
+                    {
+                        "name": "UtiliSOFT — Desktop ERP System",
+                        "bullets": [
+                            "Delivered a 7-module retail ERP (catalog, stock, sales, vendors, employee records) as a single deployable desktop application.",
+                            "Eliminated SQL injection risk using prepare statements within a 3-tier RBAC system."
+                        ]
+                    }
+                ]
             )
 
         # Basic fallback for other schemas
@@ -264,7 +300,8 @@ class LLMClient:
         response_schema: Type[T],
         model_type: str = "flash",
         max_retries: int = 3,
-        system_instruction: Optional[str] = None
+        system_instruction: Optional[str] = None,
+        images: Optional[List[Any]] = None
     ) -> T:
         """
         Call Gemini to generate structured output matching a Pydantic schema.
@@ -291,8 +328,12 @@ class LLMClient:
                 logger.info(f"Calling Gemini API (Attempt {attempts}/{max_retries}) using {model_name}...")
                 
                 # Fetch output from Gemini with schema enforcement
+                contents = [current_prompt]
+                if images:
+                    contents.extend(images)
+
                 response = model.generate_content(
-                    current_prompt,
+                    contents,
                     generation_config=genai.types.GenerationConfig(
                         response_mime_type="application/json",
                         response_schema=response_schema
