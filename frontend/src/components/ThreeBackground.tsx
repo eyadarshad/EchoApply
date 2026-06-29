@@ -67,28 +67,51 @@ function ShaderBackground() {
 
     void main() {
       vec2 uv = vUv;
-      vec2 dist_uv = uv + (u_mouse - 0.5) * 0.12;
       
-      float wave1 = sin(dist_uv.x * 3.5 + u_time * 0.2) * cos(dist_uv.y * 2.5 - u_time * 0.15);
-      float wave2 = cos(dist_uv.y * 4.5 + u_time * 0.25) * sin(dist_uv.x * 1.5 - u_time * 0.1);
-      float combined = (wave1 + wave2) * 0.5 + 0.5;
+      // Transform coordinates to center (-0.5 to 0.5)
+      vec2 p = uv - 0.5;
+      
+      // Safe gravitational distortion towards the cursor
+      vec2 mouse_pos = u_mouse - 0.5;
+      vec2 diff = p - mouse_pos;
+      float d_mouse = length(diff);
+      if (d_mouse > 0.001) {
+        p += (diff / d_mouse) * (0.04 / (d_mouse + 0.15)) * 0.12;
+      }
+      
+      // Perspective warp (grid recedes in y dimension)
+      float z = 1.0 / (p.y + 1.25);
+      vec2 grid_uv = vec2(p.x * z * 6.5, z * 6.5 + u_time * 0.1);
+      
+      // Gentle wavy grid distortion
+      grid_uv.x += sin(grid_uv.y * 1.5 + u_time * 0.35) * 0.12;
+      grid_uv.y += cos(grid_uv.x * 1.5 + u_time * 0.28) * 0.12;
 
-      vec3 color1_dark = vec3(0.02, 0.03, 0.08); 
-      vec3 color2_dark = vec3(0.08, 0.05, 0.18);
-      vec3 color3_dark = vec3(0.03, 0.01, 0.06);
+      // Render vector grid lines
+      vec2 f = abs(fract(grid_uv - 0.5) - 0.5);
+      vec2 grid_lines = smoothstep(0.035 * z, 0.0, f);
+      float grid_intensity = max(grid_lines.x, grid_lines.y);
+      
+      // Recede and fade grid into upper perspective limit
+      float fade = smoothstep(-0.5, 0.2, p.y) * smoothstep(0.5, 0.2, abs(p.x));
+      grid_intensity *= fade * 0.25;
 
-      vec3 color1_light = vec3(0.97, 0.98, 1.0);  
-      vec3 color2_light = vec3(0.91, 0.90, 0.98);   
-      vec3 color3_light = vec3(0.95, 0.96, 0.99);  
-
-      vec3 final_color_dark = mix(color1_dark, mix(color2_dark, color3_dark, combined), uv.y);
-      vec3 final_color_light = mix(color1_light, mix(color2_light, color3_light, combined), uv.y);
-
-      vec3 final_color = mix(final_color_light, final_color_dark, u_dark_mode);
-
-      float mouse_dist = distance(uv, u_mouse);
-      float glow = smoothstep(0.45, 0.0, mouse_dist) * 0.06;
-      final_color += vec3(glow * 0.4, glow * 0.3, glow * 0.7);
+      // Theme color tokens
+      vec3 bg_dark = vec3(0.02, 0.03, 0.08);
+      vec3 grid_dark = vec3(0.39, 0.4, 0.95);
+      
+      vec3 bg_light = vec3(0.97, 0.98, 1.0);
+      vec3 grid_light = vec3(0.35, 0.3, 0.85);
+      
+      vec3 bg_color = mix(bg_light, bg_dark, u_dark_mode);
+      vec3 grid_color = mix(grid_light, grid_dark, u_dark_mode);
+      
+      // Combine background and grid glow
+      vec3 final_color = bg_color + grid_color * grid_intensity;
+      
+      // Mouse spotlight glow
+      float glow = smoothstep(0.45, 0.0, d_mouse) * 0.05;
+      final_color += grid_color * glow;
 
       gl_FragColor = vec4(final_color, 1.0);
     }

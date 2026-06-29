@@ -26,6 +26,7 @@ interface TailorPanelProps {
     atsScore: number
   ) => void;
   initialJdText?: string;
+  onBack?: () => void;
 }
 
 const PIPELINE_STEPS = [
@@ -38,7 +39,7 @@ const PIPELINE_STEPS = [
   "Stage 7: Preparing final resume layout..."
 ];
 
-export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, initialJdText = "" }: TailorPanelProps) {
+export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, initialJdText = "", onBack }: TailorPanelProps) {
   const [jdText, setJdText] = useState(initialJdText);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,24 +111,35 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 animate-fade-in">
-      <div className="p-6 md:p-8 rounded-3xl border border-slate-800 bg-slate-900/20 backdrop-blur-xl relative overflow-hidden">
+      <div className="p-6 md:p-8 rounded-3xl glass-card relative overflow-hidden">
         {/* Glow effect */}
         <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
 
-        <div className="flex items-center gap-3 mb-6">
-          <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl">
-            <Sparkles className="w-5 h-5" />
+        <div className="flex justify-between items-start mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-slate-850 dark:text-slate-100">Step 2: Resume Tailoring Pipeline</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Paste the job listing description to tailor your experience factual matches.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-bold text-slate-100">Step 2: Resume Tailoring Pipeline</h3>
-            <p className="text-xs text-slate-400">Paste the job listing description to tailor your experience factual matches.</p>
-          </div>
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-655 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition shadow-sm"
+            >
+              &larr; Back to Profile
+            </button>
+          )}
         </div>
 
         {!loading ? (
           <form onSubmit={handleTailor} className="space-y-6">
-            <div className="space-y-2">
-              <label htmlFor="jd-textarea" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+            <div className="space-y-2 text-left">
+              <label htmlFor="jd-textarea" className="text-xs font-bold text-slate-550 dark:text-slate-300 uppercase tracking-wider">
                 Job Description text
               </label>
               <textarea
@@ -136,7 +148,7 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
                 value={jdText}
                 onChange={(e) => setJdText(e.target.value)}
                 placeholder="Paste the requirements, role description, and skills listed in the job opening..."
-                className="w-full px-4 py-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-sm focus:border-indigo-500/60 focus:outline-none transition duration-200 text-slate-200 placeholder:text-slate-600 font-light resize-y"
+                className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-sm focus:border-indigo-500/60 focus:outline-none transition duration-200 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-light resize-y shadow-sm"
                 required
               />
             </div>
@@ -144,18 +156,18 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
             <button
               type="submit"
               disabled={!jdText.trim()}
-              className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm transition duration-200 flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm transition duration-200 flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
             >
               <RefreshCw className="w-4 h-4" />
               Analyze & Tailor Bullet Points
             </button>
 
             {error && (
-              <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-300 text-sm flex items-start gap-2">
+              <div className="p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-350 dark:text-rose-300 text-sm flex items-start gap-2">
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold">Tailoring Pipeline Failed</span>
-                  <p className="text-xs text-rose-400 mt-1">{error}</p>
+                  <p className="text-xs text-rose-450 dark:text-rose-400 mt-1">{error}</p>
                 </div>
               </div>
             )}
@@ -168,23 +180,23 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
                 <Terminal className="w-5 h-5 text-indigo-400 absolute" />
               </div>
               <div className="text-center">
-                <h4 className="text-sm font-semibold text-slate-200">Executing 7-Stage Pipeline</h4>
-                <p className="text-xs text-slate-400 mt-1">This will take ~10-15 seconds as it audits metrics and skills.</p>
+                <h4 className="text-sm font-semibold text-slate-805 dark:text-slate-200">Executing 7-Stage Pipeline</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">This will take ~10-15 seconds as it audits metrics and skills.</p>
               </div>
             </div>
 
             {/* Pipeline progress bar steps list */}
-            <div className="max-w-md mx-auto space-y-3.5 bg-slate-950/40 p-5 rounded-2xl border border-slate-850">
+            <div className="max-w-md mx-auto space-y-3.5 bg-slate-100/50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-850">
               {PIPELINE_STEPS.map((step, idx) => (
-                <div key={idx} className="flex items-center gap-3 text-xs">
+                <div key={idx} className="flex items-center gap-3 text-xs text-left">
                   {idx < currentStep ? (
-                    <CheckCircle2 className="w-4.5 h-4.5 text-emerald-400 shrink-0" />
+                    <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
                   ) : idx === currentStep ? (
                     <div className="w-4.5 h-4.5 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" />
                   ) : (
-                    <div className="w-4.5 h-4.5 rounded-full border border-slate-800 shrink-0" />
+                    <div className="w-4.5 h-4.5 rounded-full border border-slate-250 dark:border-slate-800 shrink-0" />
                   )}
-                  <span className={idx <= currentStep ? "text-slate-200 font-medium" : "text-slate-600"}>
+                  <span className={idx <= currentStep ? "text-slate-800 dark:text-slate-200 font-medium" : "text-slate-400 dark:text-slate-600"}>
                     {step}
                   </span>
                 </div>

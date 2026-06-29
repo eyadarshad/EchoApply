@@ -182,13 +182,26 @@ export default function ResumeUpload() {
       {/* Upload Zone */}
       {!intakeResult && !isManualEntry && (
         <div className="space-y-4">
-          <form onSubmit={handleUpload} className="p-8 border border-dashed border-slate-800 rounded-3xl bg-slate-900/20 backdrop-blur-xl flex flex-col items-center justify-center space-y-6 hover:border-indigo-500/40 transition duration-300 animate-fade-in">
-            <div className="p-4 bg-indigo-500/10 text-indigo-400 rounded-2xl">
+          <motion.form
+            onSubmit={handleUpload}
+            whileHover={{ scale: 1.015, y: -2 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            className="p-10 border-2 border-dashed border-slate-300 dark:border-slate-800 rounded-3xl glass-card flex flex-col items-center justify-center space-y-6 hover:border-indigo-500 dark:hover:border-indigo-500/60 transition-all duration-300 shadow-xl shadow-indigo-500/5 relative overflow-hidden group"
+          >
+            {/* Top accent light */}
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <div className="p-4 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl group-hover:scale-110 group-hover:bg-indigo-500/20 transition-all duration-300">
               <Upload className="w-8 h-8" />
             </div>
-            <div className="text-center space-y-1">
-              <h3 className="text-lg font-semibold text-slate-200">Upload your PDF resume</h3>
-              <p className="text-sm text-slate-400">Drag and drop or browse to select your PDF file</p>
+            
+            <div className="text-center space-y-2">
+              <h3 className="text-xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">
+                Upload your PDF resume
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                Drag and drop or browse to import your profile details
+              </p>
             </div>
             
             <input
@@ -198,46 +211,52 @@ export default function ResumeUpload() {
               className="hidden"
               id="resume-file-input"
             />
-            <label
+            
+            <motion.label
               htmlFor="resume-file-input"
-              className="px-6 py-2.5 rounded-xl border border-slate-700 bg-slate-800/50 text-slate-200 hover:bg-slate-700 hover:text-white transition duration-200 cursor-pointer font-medium text-sm"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="px-8 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm transition-all duration-200 cursor-pointer shadow-md shadow-indigo-500/20 inline-flex items-center gap-2"
             >
-              {file ? file.name : "Select Resume"}
-            </label>
+              {file ? file.name : "Select Resume File"}
+            </motion.label>
 
             {file && (
-              <button
+              <motion.button
                 type="submit"
                 disabled={uploading}
-                className="w-full max-w-xs py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm transition duration-200 flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full max-w-xs py-3 rounded-xl bg-slate-800 hover:bg-slate-700 dark:bg-slate-200 dark:hover:bg-white text-white dark:text-slate-900 font-bold text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-sm border border-slate-700/20 dark:border-white"
               >
                 {uploading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    Extracting Resume...
+                    Extracting Credentials...
                   </>
                 ) : (
                   "Upload & Parse Profile"
                 )}
-              </button>
+              </motion.button>
             )}
 
             {error && (
-              <div className="w-full p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-300 text-sm flex items-start gap-2 max-w-md">
+              <div className="w-full p-4 rounded-xl border border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-300 text-sm flex items-start gap-2 max-w-md text-left">
                 <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
                 <div>
                   <span className="font-semibold">Extraction Failed</span>
-                  <p className="text-xs text-rose-400 mt-1">{error}</p>
+                  <p className="text-xs text-rose-500 dark:text-rose-400 mt-1">{error}</p>
                 </div>
               </div>
             )}
-          </form>
+          </motion.form>
+          
           <div className="text-center">
             <button
               onClick={() => setIsManualEntry(true)}
-              className="text-indigo-400 hover:text-indigo-350 text-sm font-semibold hover:underline transition duration-200"
+              className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 text-sm font-bold hover:underline transition duration-200"
             >
-              Or fill in your details manually →
+              Or fill in your details manually &rarr;
             </button>
           </div>
         </div>
@@ -449,6 +468,7 @@ export default function ResumeUpload() {
           parsed_resume={intakeResult.parsed_resume}
           onTailorSuccess={handleTailorSuccess}
           initialJdText={selectedJdText}
+          onBack={() => setTailorStep(tailoredResume ? "done" : "idle")}
         />
       )}
 
