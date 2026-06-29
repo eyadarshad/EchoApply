@@ -50,53 +50,55 @@ function ShaderBackground() {
     uniforms.current.u_resolution.value.set(size.width, size.height);
   }, [size]);
 
+  // Vertex Shader deforms pos.z based on distance to the cursor (weight on fabric effect)
   const vertexShader = `
+    uniform float u_time;
+    uniform vec2 u_mouse;
+    varying vec3 v_position;
     varying vec2 vUv;
+
     void main() {
       vUv = uv;
-      gl_Position = vec4(position, 1.0);
+      vec3 pos = position;
+      
+      // Map mouse (0 to 1) to local plane size bounds (-6.0 to 6.0)
+      vec2 mouse_local = (u_mouse - 0.5) * 12.0;
+      float dist = distance(pos.xy, mouse_local);
+      
+      // Fabric pinch deformation (pull down along Z axis under cursor)
+      float pinch_radius = 3.5;
+      float pinch_strength = 1.35;
+      float factor = smoothstep(pinch_radius, 0.0, dist);
+      
+      // Elastic indentation
+      pos.z -= factor * pinch_strength;
+      
+      // Gentle wavy motion across grid lines
+      pos.z += sin(pos.x * 0.65 + u_time * 0.25) * cos(pos.y * 0.65 + u_time * 0.2) * 0.12;
+      
+      v_position = pos;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
     }
   `;
 
   const fragmentShader = `
-    uniform float u_time;
-    uniform vec2 u_mouse;
-    uniform vec2 u_resolution;
-    uniform float u_dark_mode;
+    varying vec3 v_position;
     varying vec2 vUv;
+    uniform float u_dark_mode;
 
     void main() {
-      vec2 uv = vUv;
+      // Draw grid lines based on UV coordinates
+      vec2 grid = abs(fract(vUv * 28.0 - 0.5) - 0.5) / 0.035;
+      float line = min(grid.x, grid.y);
+      float grid_intensity = 1.0 - min(line, 1.0);
       
-      // Transform coordinates to center (-0.5 to 0.5)
-      vec2 p = uv - 0.5;
-      
-      // Safe gravitational distortion towards the cursor
-      vec2 mouse_pos = u_mouse - 0.5;
-      vec2 diff = p - mouse_pos;
-      float d_mouse = length(diff);
-      if (d_mouse > 0.001) {
-        p += (diff / d_mouse) * (0.04 / (d_mouse + 0.15)) * 0.12;
-      }
-      
-      // Perspective warp (grid recedes in y dimension)
-      float z = 1.0 / (p.y + 1.25);
-      vec2 grid_uv = vec2(p.x * z * 6.5, z * 6.5 + u_time * 0.1);
-      
-      // Gentle wavy grid distortion
-      grid_uv.x += sin(grid_uv.y * 1.5 + u_time * 0.35) * 0.12;
-      grid_uv.y += cos(grid_uv.x * 1.5 + u_time * 0.28) * 0.12;
+      // Fade grid at outer edges to blend with background
+      float fade = smoothstep(0.0, 0.22, vUv.x) * smoothstep(1.0, 0.78, vUv.x) *
+                   smoothstep(0.0, 0.22, vUv.y) * smoothstep(1.0, 0.78, vUv.y);
+                   
+      grid_intensity *= fade * 0.26;
 
-      // Render vector grid lines
-      vec2 f = abs(fract(grid_uv - 0.5) - 0.5);
-      vec2 grid_lines = smoothstep(0.035 * z, 0.0, f);
-      float grid_intensity = max(grid_lines.x, grid_lines.y);
-      
-      // Recede and fade grid into upper perspective limit
-      float fade = smoothstep(-0.5, 0.2, p.y) * smoothstep(0.5, 0.2, abs(p.x));
-      grid_intensity *= fade * 0.25;
-
-      // Theme color tokens
+      // Theme background and grid colors
       vec3 bg_dark = vec3(0.02, 0.03, 0.08);
       vec3 grid_dark = vec3(0.39, 0.4, 0.95);
       
@@ -106,27 +108,21 @@ function ShaderBackground() {
       vec3 bg_color = mix(bg_light, bg_dark, u_dark_mode);
       vec3 grid_color = mix(grid_light, grid_dark, u_dark_mode);
       
-      // Combine background and grid glow
+      // Blend base and grid lines
       vec3 final_color = bg_color + grid_color * grid_intensity;
       
-      // Mouse spotlight glow
-      float glow = smoothstep(0.45, 0.0, d_mouse) * 0.05;
-      final_color += grid_color * glow;
-
       gl_FragColor = vec4(final_color, 1.0);
     }
   `;
 
   return (
-    <mesh>
-      <planeGeometry args={[2, 2]} />
+    <mesh rotation={[-Math.PI / 3.2, 0, 0]} position={[0, -0.8, -0.5]}>
+      <planeGeometry args={[12, 12, 60, 60]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
         fragmentShader={fragmentShader}
         uniforms={uniforms.current}
-        depthWrite={false}
-        depthTest={false}
       />
     </mesh>
   );
@@ -142,7 +138,8 @@ export default function ThreeBackground() {
 
   return (
     <div className="fixed inset-0 w-full h-full -z-20 pointer-events-none">
-      <Canvas camera={{ position: [0, 0, 1] }}>
+      <Canvas camera={{ position: [0, 0, 2.8], fov: 45 }}>
+        <ambientLight intensity={1.0} />
         <ShaderBackground />
       </Canvas>
     </div>
