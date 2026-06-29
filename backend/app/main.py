@@ -1,5 +1,6 @@
 import uuid
 import logging
+logging.basicConfig(level=logging.DEBUG)
 from fastapi import FastAPI, UploadFile, File, Response, Query, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas import (
@@ -16,8 +17,11 @@ from app.parsers.llm_extractor import extract_resume_data, extract_resume_from_i
 from app.services.github_enricher import extract_github_username, enrich_profile_with_github
 from app.services.resume_generator import generate_resume_pdf, generate_resume_docx
 from app.pipeline.orchestrator import tailor_resume_flow
+from app.services.job_service import JobService
 
 logger = logging.getLogger(__name__)
+
+job_service = JobService()
 
 app = FastAPI(
     title="AI Resume Generator & Smart Apply API",
@@ -31,6 +35,8 @@ frontend_origins = [
     f"http://127.0.0.1:{settings.FRONTEND_PORT}",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:3005",
+    "http://127.0.0.1:3005",
 ]
 
 app.add_middleware(
@@ -267,29 +273,15 @@ async def tailor_resume(payload: ResumeTailorRequest):
 async def search_jobs(payload: JobSearchRequest):
     """
     Search and rank job listings from multiple aggregators.
-    This is a stub for Phase 3/5 implementation.
     """
-    import datetime
-    return JobSearchResponse(
-        query_hash="stub_hash",
-        jobs=[
-            {
-                "job_id": "stub_job_1",
-                "source": "JSearch",
-                "title": "Backend Developer",
-                "company": "Tech Solutions",
-                "location": payload.location or "Remote",
-                "remote": payload.remote_only,
-                "apply_url": "https://example.com/apply",
-                "jd_text": "We are looking for a Python developer...",
-                "fetched_at": datetime.datetime.now(datetime.timezone.utc),
-                "job_hash": "stub_job_hash_1",
-                "match_score": 0.9,
-                "match_explanation": "Good match based on Python and FastAPI.",
-                "is_applied": False
-            }
-        ]
-    )
+    try:
+        return await job_service.search_and_rank_jobs(payload)
+    except Exception as e:
+        logger.error(f"Error in /jobs/search: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred during job search: {str(e)}"
+        )
 
 # ==========================================
 # Phase 4 & 6: Application & Auto-Apply Stubs
@@ -332,5 +324,5 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=settings.BACKEND_PORT,
-        reload=True
+        reload=False
     )

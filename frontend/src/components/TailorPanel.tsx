@@ -25,6 +25,7 @@ interface TailorPanelProps {
     truthfulnessReport: any,
     atsScore: number
   ) => void;
+  initialJdText?: string;
 }
 
 const PIPELINE_STEPS = [
@@ -37,8 +38,8 @@ const PIPELINE_STEPS = [
   "Stage 7: Preparing final resume layout..."
 ];
 
-export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess }: TailorPanelProps) {
-  const [jdText, setJdText] = useState("");
+export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, initialJdText = "" }: TailorPanelProps) {
+  const [jdText, setJdText] = useState(initialJdText);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(0);

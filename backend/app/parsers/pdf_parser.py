@@ -36,13 +36,16 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> str:
         full_text.append(text)
 
     extracted_text = "\n".join(full_text).strip()
+    logger.debug(f"[DEBUG PyMuPDF] Extracted raw text length: {len(extracted_text)} chars. First 500 chars:\n{extracted_text[:500]}")
 
     # Detect scanned / empty text layer
     if not has_text_layer or len(extracted_text) < 100:
         logger.info("Minimal text layer found. Invoking OCR fallback...")
         ocr_text = run_ocr_fallback(doc)
         if ocr_text.strip():
-            return ocr_text.strip()
+            ocr_text_clean = ocr_text.strip()
+            logger.debug(f"[DEBUG OCR] Extracted OCR text length: {len(ocr_text_clean)} chars. First 500 chars:\n{ocr_text_clean[:500]}")
+            return ocr_text_clean
         else:
             raise ScannedPDFError(
                 "This PDF appears to be scanned or image-only, and OCR could not extract any text. "

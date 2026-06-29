@@ -26,6 +26,7 @@ def extract_resume_data(raw_text: str) -> ResumeParsedData:
 
     try:
         logger.info("Extracting structured resume data via LLM...")
+        logger.debug(f"[DEBUG Prompt] Exact full prompt + document text sent to Gemini:\n{prompt}")
         parsed_data = llm_client.generate_structured(
             prompt=prompt,
             response_schema=ResumeParsedData,
@@ -59,6 +60,7 @@ def extract_resume_from_images(images: list, filename: str = "") -> ResumeParsed
     
     try:
         logger.info("Extracting structured resume data via Gemini Vision multimodal call...")
+        logger.debug(f"[DEBUG Prompt] Exact full prompt + document text sent to Gemini (multimodal):\n{prompt}")
         parsed_data = llm_client.generate_structured(
             prompt=prompt,
             response_schema=ResumeParsedData,

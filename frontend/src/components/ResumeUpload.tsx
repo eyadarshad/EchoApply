@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Upload, FileText, CheckCircle2, AlertCircle, Github, Download, Award, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import TailorPanel from "./TailorPanel";
 import TruthfulnessGate from "./TruthfulnessGate";
+import JobSearch from "./JobSearch";
 
 interface ResumeParsedData {
   name: string;
@@ -61,8 +62,9 @@ export default function ResumeUpload() {
     github_enriched: GitHubEnrichedData | null;
   } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<"experience" | "projects" | "education" | "skills" | "github">("experience");
+  const [activeTab, setActiveTab] = useState<"experience" | "projects" | "education" | "skills" | "github" | "jobs">("experience");
   const [downloading, setDownloading] = useState<string | null>(null);
+  const [selectedJdText, setSelectedJdText] = useState<string>("");
 
   // Tailoring Pipeline States
   const [tailorStep, setTailorStep] = useState<"idle" | "input" | "gate" | "done">("idle");
@@ -420,6 +422,7 @@ export default function ResumeUpload() {
           user_id={intakeResult.user_id}
           parsed_resume={intakeResult.parsed_resume}
           onTailorSuccess={handleTailorSuccess}
+          initialJdText={selectedJdText}
         />
       )}
 
@@ -554,7 +557,7 @@ export default function ResumeUpload() {
 
           {/* Navigation Tabs */}
           <div className="flex border-b border-slate-800 overflow-x-auto whitespace-nowrap">
-            {(["experience", "projects", "education", "skills", "github"] as const).map((tab) => {
+            {(["experience", "projects", "education", "skills", "github", "jobs"] as const).map((tab) => {
               if (tab === "github" && !github) return null;
               return (
                 <button
@@ -724,6 +727,18 @@ export default function ResumeUpload() {
                   )}
                 </div>
               </div>
+            )}
+
+            {/* Jobs Panel */}
+            {activeTab === "jobs" && (
+              <JobSearch
+                user_id={intakeResult.user_id}
+                parsed_resume={resume}
+                onSelectJobForTailoring={(jdText) => {
+                  setSelectedJdText(jdText);
+                  setTailorStep("input");
+                }}
+              />
             )}
           </div>
         </div>

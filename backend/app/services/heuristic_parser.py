@@ -149,13 +149,54 @@ def extract_experience(text: str) -> List[Dict[str, Any]]:
                 current_job["bullets"].append(clean_line)
         else:
             is_role = any(kw in line.lower() for kw in role_keywords)
-            date_match = re.search(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Present|\d{2}/\d{4}|\d{4})\b", line, re.IGNORECASE)
+            date_match = re.search(r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Present|\d{4}-\d{2}|\d{2}-\d{4}|\d{2}/\d{4}|\d{4})\b", line, re.IGNORECASE)
             
             if is_role or date_match or not current_job:
                 if current_job:
                     experience.append(current_job)
                 
-                parts = re.split(r"[|•,-]|\s-\s", line)
+                # 1. Extract and isolate date period (e.g. "Jun 2023 - Present" or "2023-01 to 2023-06")
+                date_range_match = re.search(
+                    r"\(?\b((?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{4}-\d{2}|\d{2}-\d{4}|\d{2}/\d{4}|\d{4}|Present)[\s\-\–\—to]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|\d{4}-\d{2}|\d{2}-\d{4}|\d{2}/\d{4}|\d{4}|Present))\b\)?",
+                    line, re.IGNORECASE
+                )
+                
+                start_date = "2023"
+                end_date = "Present"
+                line_no_date = line
+                
+                if date_range_match:
+                    date_str = date_range_match.group(1)
+                    line_no_date = line.replace(date_range_match.group(0), "").strip()
+                    line_no_date = re.sub(r"^[,\s|•\-\–\—]+|[,\s|•\-\–\—]+$", "", line_no_date).strip()
+                    
+                    # Split date_str into start and end dates
+                    date_str_lower = date_str.lower()
+                    if " to " in date_str_lower:
+                        date_parts = re.split(r"\s+to\s+", date_str, flags=re.IGNORECASE)
+                    elif " - " in date_str:
+                        date_parts = date_str.split(" - ")
+                    elif " – " in date_str:
+                        date_parts = date_str.split(" – ")
+                    elif " — " in date_str:
+                        date_parts = date_str.split(" — ")
+                    else:
+                        date_parts = re.split(r"\s*(?:to|[-–—])\s*", date_str, flags=re.IGNORECASE)
+                        
+                    if len(date_parts) >= 2:
+                        start_date = date_parts[0].strip()
+                        end_date = date_parts[1].strip()
+                    elif len(date_parts) == 1:
+                        start_date = date_parts[0].strip()
+                elif date_match:
+                    start_date = date_match.group(0)
+                    line_no_date = line.replace(date_match.group(0), "").strip()
+                    line_no_date = re.sub(r"^[,\s|•\-\–\—]+|[,\s|•\-\–\—]+$", "", line_no_date).strip()
+                
+                line_no_date = re.sub(r"\(\s*\)", "", line_no_date).strip()
+                
+                # 2. Split role and company using delimiters like |, •, at, @, or - (without splitting inside dates)
+                parts = re.split(r"[|•]|\s+at\s+|\s+@\s+|\s+-\s+", line_no_date, flags=re.IGNORECASE)
                 role = "Software Engineer"
                 company = "Company"
                 if len(parts) >= 2:
@@ -163,16 +204,15 @@ def extract_experience(text: str) -> List[Dict[str, Any]]:
                     company = parts[1].strip()
                 elif len(parts) == 1:
                     role = parts[0].strip()
-                    
-                date_str = "2023 - Present"
-                if date_match:
-                    date_str = line
-                    
+                
+                role = re.sub(r"^[,\s|•\-\–\—]+|[,\s|•\-\–\—]+$", "", role).strip()
+                company = re.sub(r"^[,\s|•\-\–\—]+|[,\s|•\-\–\—]+$", "", company).strip()
+                
                 current_job = {
-                    "role": role,
-                    "company": company,
-                    "start_date": "2023",
-                    "end_date": "Present",
+                    "role": role or "Software Engineer",
+                    "company": company or "Company",
+                    "start_date": start_date,
+                    "end_date": end_date,
                     "bullets": []
                 }
                 
@@ -207,11 +247,17 @@ def extract_projects(text: str) -> List[Dict[str, Any]]:
     projects = []
     current_proj = None
     
+    action_verbs = {"built", "developed", "designed", "created", "implemented", "managed", "led", "optimized", "configured", "deployed", "assisted", "used", "leveraged", "enhanced", "integrated", "engineered", "wrote", "reduced", "increased"}
+    
     for line in proj_lines:
         if not line:
             continue
             
-        is_bullet = line.startswith(("-", "—", "*", "•", "o ")) or (current_proj and len(line) > 30)
+        first_word = line.split()[0].lower().strip(":,.-") if line.split() else ""
+        is_bullet_symbol = line.startswith(("-", "—", "*", "•", "o "))
+        is_action_verb = first_word in action_verbs
+        
+        is_bullet = is_bullet_symbol or (current_proj and (is_action_verb or (len(line) > 40 and not line[0].isupper())))
         clean_line = line.lstrip("-—*•o ").strip()
         
         if is_bullet:
@@ -221,7 +267,7 @@ def extract_projects(text: str) -> List[Dict[str, Any]]:
             if current_proj:
                 projects.append(current_proj)
             current_proj = {
-                "name": line,
+                "name": line.strip(":- "),
                 "bullets": []
             }
             

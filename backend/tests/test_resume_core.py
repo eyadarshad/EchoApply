@@ -190,3 +190,20 @@ def test_render_api_endpoint(sample_profile):
     else:
         assert response_pdf.status_code == 200
         assert response_pdf.headers["content-type"] == "application/pdf"
+
+def test_extract_text_from_real_pdf_fixture():
+    import os
+    pdf_path = os.path.join("..", "Mock", "JohnDoe-Resume.pdf")
+    if not os.path.exists(pdf_path):
+        pdf_path = os.path.join("Mock", "JohnDoe-Resume.pdf")
+        
+    assert os.path.exists(pdf_path), f"Fixture not found at: {pdf_path}"
+    
+    with open(pdf_path, "rb") as f:
+        pdf_bytes = f.read()
+        
+    extracted = extract_text_from_pdf(pdf_bytes)
+    assert "John Doe" in extracted
+    assert "johndoe@example.com" in extracted
+    assert "State University" in extracted
+

@@ -23,17 +23,61 @@ class EchoResponse(BaseModel):
 # Phase 1 & 2: Resume Intake & Tailoring
 # ==========================================
 
+class EducationEntry(BaseModel):
+    school: str = Field(..., description="Name of the school or university")
+    degree: str = Field(..., description="Degree or qualification (e.g. B.S. or High School)")
+    date: str = Field(..., description="Graduation year or date range")
+    major: Optional[str] = Field(None, description="Field of study or major")
+    gpa: Optional[str] = Field(None, description="GPA or grade score")
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
+class ExperienceEntry(BaseModel):
+    role: str = Field(..., description="Job role or title")
+    company: str = Field(..., description="Company name")
+    start_date: str = Field(..., description="Start date (e.g. 2023-01 or Jan 2023)")
+    end_date: str = Field(..., description="End date or 'Present'")
+    location: Optional[str] = Field(None, description="Job location or 'Remote'")
+    bullets: List[str] = Field(default_factory=list, description="Work experience achievement bullet points")
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
+class ProjectEntry(BaseModel):
+    name: str = Field(..., description="Name of the project")
+    link: Optional[str] = Field(None, description="URL or repository link")
+    bullets: List[str] = Field(default_factory=list, description="Project bullet points detailing achievements")
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
+class HighlightSkill(BaseModel):
+    skill: str = Field(..., description="The name of the skill")
+    relevance_reason: str = Field(..., description="Relevance reasoning for matching the job description")
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
+class PartialSkillMatch(BaseModel):
+    jd_skill: str = Field(..., description="Required skill from job description")
+    user_skill: str = Field(..., description="Related skill candidate has")
+    reason: str = Field(..., description="Explanation of relation / partial match")
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
 class ResumeParsedData(BaseModel):
-    name: str = "Unknown Candidate"
-    email: str = "unknown@example.com"
+    name: str
+    email: str
     phone: Optional[str] = None
     links: List[str] = []
-    education: List[Dict[str, Any]] = []
-    experience: List[Dict[str, Any]] = []
+    education: List[EducationEntry] = []
+    experience: List[ExperienceEntry] = []
     skills: List[str] = []
-    projects: List[Dict[str, Any]] = []
+    projects: List[ProjectEntry] = []
     anchor_line: Optional[str] = None
-    highlights_strip: List[Dict[str, Any]] = []
+    highlights_strip: List[HighlightSkill] = []
 
 class ResumeIntakeResponse(BaseModel):
     user_id: str
@@ -57,7 +101,7 @@ class JDAnalysisResult(BaseModel):
 class GapAnalysisResult(BaseModel):
     matched_skills: List[str] = Field(default_factory=list, description="Skills present in resume that match the JD")
     missing_skills: List[str] = Field(default_factory=list, description="Required/preferred skills in the JD lacking in the resume")
-    partial_matches: List[Dict[str, Any]] = Field(default_factory=list, description="List of related skills (e.g. {'jd_skill': '...', 'user_skill': '...', 'reason': '...'})")
+    partial_matches: List[PartialSkillMatch] = Field(default_factory=list, description="List of related skills")
 
 class RewrittenBullet(BaseModel):
     original_bullet: str
@@ -66,14 +110,10 @@ class RewrittenBullet(BaseModel):
 class TargetedRewriteResult(BaseModel):
     rewritten_bullets: List[RewrittenBullet] = Field(default_factory=list)
 
-class HighlightSkill(BaseModel):
-    skill: str
-    relevance_reason: str
-
 class ImpactPassResult(BaseModel):
     anchor_line: str = Field(..., description="One tailored tagline/title statement under the name")
     highlights_strip: List[HighlightSkill] = Field(default_factory=list, description="Curated list of top 4-5 relevant skills with explanations")
-    tailored_experience: List[Dict[str, Any]] = Field(default_factory=list, description="Experience section with tailored, prioritized, and page-trimmed bullets")
+    tailored_experience: List[ExperienceEntry] = Field(default_factory=list, description="Experience section with tailored, prioritized, and page-trimmed bullets")
 
 class BulletVerification(BaseModel):
     rewritten_bullet: str
@@ -121,6 +161,7 @@ class JobSearchRequest(BaseModel):
     location: Optional[str] = None
     remote_only: bool = False
     limit: int = 50
+    user_id: Optional[str] = None
 
 class JobSearchResponse(BaseModel):
     query_hash: str

@@ -42,16 +42,17 @@ class LLMClient:
         """
         if not self.client:
             from app.services.heuristic_parser import handle_heuristic_fallback
-            return handle_heuristic_fallback(prompt, response_schema)
+            result = handle_heuristic_fallback(prompt, response_schema)
+            logger.debug(f"[DEBUG Heuristic Fallback Response] Heuristic response:\n{result.model_dump_json() if hasattr(result, 'model_dump_json') else result}")
+            return result
 
         model_name = self.get_model_name(model_type)
         
-        # Clean up model name: the new SDK expects 'gemini-1.5-flash' or 'gemini-1.5-pro'
         clean_model_name = model_name
-        if clean_model_name == "gemini-1.5-flash-latest":
-            clean_model_name = "gemini-1.5-flash"
-        elif clean_model_name == "gemini-1.5-pro-latest":
-            clean_model_name = "gemini-1.5-pro"
+        if clean_model_name in ["gemini-1.5-flash-latest", "gemini-1.5-flash"]:
+            clean_model_name = "gemini-2.5-flash"
+        elif clean_model_name in ["gemini-1.5-pro-latest", "gemini-1.5-pro"]:
+            clean_model_name = "gemini-2.5-pro"
 
         current_prompt = prompt
         attempts = 0
@@ -77,6 +78,7 @@ class LLMClient:
                 )
                 
                 text_output = response.text
+                logger.debug(f"[DEBUG LLM Response] Raw response text before validation:\n{text_output}")
                 if not text_output:
                     raise ValueError("Model returned an empty text response.")
 
@@ -90,8 +92,19 @@ class LLMClient:
                 logger.warning(f"Structured output attempt {attempts} failed validation: {error_details}")
                 
                 if attempts >= max_retries:
-                    logger.error("Max retries exceeded for structured LLM call.")
-                    raise e
+                    if model_type == "pro":
+                        logger.warning("gemini-2.5-pro call failed. Falling back to gemini-2.5-flash for structured generation...")
+                        return self.generate_structured(
+                            prompt=prompt,
+                            response_schema=response_schema,
+                            model_type="flash",
+                            max_retries=2,
+                            system_instruction=system_instruction,
+                            images=images
+                        )
+                    logger.error("Max retries exceeded for structured LLM call. Falling back to local heuristic engine...")
+                    from app.services.heuristic_parser import handle_heuristic_fallback
+                    return handle_heuristic_fallback(prompt, response_schema)
                 
                 # Append error feedback so the model can self-correct in the next run
                 current_prompt = (

@@ -56,3 +56,26 @@
   - Implemented sequence-based mocking of the shared `llm_client.generate_structured` singleton method to prevent test cross-contamination in pytest.
   - Designed `/tailor` endpoint request payload to allow optional parsed resume data, permitting fully operational, database-less execution paths.
   - Set default density control bounds to restrict experiences to at most 3 bullets per job and 8 total bullets, prioritizing the highest-impact metrics first to ensure single-page layouts.
+
+---
+
+## Phase 3: Job Search, Aggregation, Caching, and Matching
+- **Status**: Completed & Verified
+- **Date**: 2026-06-29
+- **What was built**:
+  - Unified Job Aggregator Service in `backend/app/services/job_service.py` to query JSearch, Jooble, Remotive, and Arbeitnow concurrently with async semaphores.
+  - Hash-based job deduplication (`job_hash` via SHA-256 over normalized title, company, location).
+  - Multi-criteria matching engine (keyword overlap, title match, location alignment, and recency) with match explanation generation.
+  - Dual-tier caching (Postgres database cache table with automatic fallback to in-memory `IN_MEMORY_JOB_CACHE` if DB is unreachable).
+  - Applied-status indicators displaying checkmarks for jobs the candidate already applied to.
+  - Interactive glassmorphic search dashboard component `JobSearch.tsx` with limit, keywords, and remote filters.
+  - Integrated "Tailor Resume" action in search results to auto-navigate to the tailoring tab with pre-filled job descriptions.
+- **Verification**:
+  - Backend automated unit and integration tests added in `backend/tests/test_jobs.py` (caching, score math, deduplication, remote filtering, applied checks).
+  - Full backend test suite executed and passed (27 passed, 1 skipped).
+  - E2E manual walkthrough and screenshots captured on port 3005 dev server.
+- **Decisions**:
+  - Added support for database-less fallback where listings are assigned transient UUIDs if Postgres is offline, ensuring the user experience never crashes.
+  - Integrated the Jobs tab directly alongside Experience/Skills tabs on the profile dashboard, optimizing navigation hierarchy.
+  - Modified CORS configurations to support frontend port 3005 to permit development and verification sandboxing.
+
