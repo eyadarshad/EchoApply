@@ -2,6 +2,7 @@ import uuid
 import logging
 logging.basicConfig(level=logging.DEBUG)
 from fastapi import FastAPI, UploadFile, File, Response, Query, HTTPException, status
+from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from app.schemas import (
     HealthResponse, EchoRequest, EchoResponse, 
@@ -9,7 +10,8 @@ from app.schemas import (
     ResumeTailorRequest, ResumeTailorResponse,
     JobSearchRequest, JobSearchResponse,
     DraftAnswersRequest, DraftAnswersResponse, ScreenQuestionDraft,
-    ApplicationSubmitRequest, ApplicationSubmitResponse
+    ApplicationSubmitRequest, ApplicationSubmitResponse,
+    SaveProfileRequest, SaveProfileResponse
 )
 from app.config import settings
 from app.parsers.pdf_parser import extract_text_from_pdf, PDFParserError, ScannedPDFError, render_pdf_to_images
@@ -22,6 +24,16 @@ from app.services.job_service import JobService
 logger = logging.getLogger(__name__)
 
 job_service = JobService()
+
+def clean_uuid(user_id: str) -> str:
+    """Helper to convert any transient user_id into a valid UUID string format."""
+    if not user_id:
+        return str(uuid.uuid4())
+    try:
+        uuid.UUID(user_id)
+        return user_id
+    except ValueError:
+        return str(uuid.uuid5(uuid.NAMESPACE_DNS, user_id))
 
 app = FastAPI(
     title="AI Resume Generator & Smart Apply API",
@@ -99,6 +111,48 @@ async def resume_intake(file: UploadFile = File(...)):
         # Generate a temporary user ID for this session
         user_id = str(uuid.uuid4())
         
+        # Save to database and generate embedding
+        from app.services.embedding_service import serialize_profile
+        from app.services.llm_client import llm_client
+        
+        try:
+            serialized_text = serialize_profile(parsed_data)
+            embedding = llm_client.generate_embedding(serialized_text)
+            
+            import psycopg
+            conn = None
+            try:
+                conn = psycopg.connect(settings.DATABASE_URL, connect_timeout=2)
+                with conn.cursor() as cur:
+                    import json
+                    cur.execute(
+                        """
+                        INSERT INTO users (id, email, major)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (id) DO NOTHING;
+                        """,
+                        (user_id, parsed_data.email, "Computer Science")
+                    )
+                    cur.execute(
+                        """
+                        INSERT INTO profiles (user_id, parsed_resume_json, profile_embedding)
+                        VALUES (%s, %s, %s)
+                        ON CONFLICT (user_id) DO UPDATE 
+                        SET parsed_resume_json = EXCLUDED.parsed_resume_json, 
+                            profile_embedding = EXCLUDED.profile_embedding,
+                            updated_at = NOW();
+                        """,
+                        (user_id, json.dumps(parsed_data.model_dump()), embedding)
+                    )
+                    conn.commit()
+            except Exception as db_err:
+                logger.warning(f"Failed to save intake profile to DB: {db_err}")
+            finally:
+                if conn:
+                    conn.close()
+        except Exception as embed_err:
+            logger.warning(f"Failed to generate profile embedding: {embed_err}")
+        
         return ResumeIntakeResponse(
             user_id=user_id,
             parsed_resume=parsed_data,
@@ -116,6 +170,66 @@ async def resume_intake(file: UploadFile = File(...)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An error occurred while processing the resume: {str(e)}"
         )
+
+@app.post("/profiles", response_model=SaveProfileResponse)
+async def save_profile(payload: SaveProfileRequest):
+    """
+    Saves or updates a candidate profile in the database,
+    automatically generating and storing its semantic vector embedding.
+    """
+    user_id = clean_uuid(payload.user_id)
+    profile = payload.parsed_resume
+    major = payload.major or "Computer Science"
+    
+    from app.services.embedding_service import serialize_profile
+    from app.services.llm_client import llm_client
+    
+    try:
+        serialized_text = serialize_profile(profile)
+        embedding = llm_client.generate_embedding(serialized_text)
+    except Exception as embed_err:
+        logger.warning(f"Failed to generate profile embedding: {embed_err}")
+        embedding = [0.0] * 768
+    
+    import psycopg
+    conn = None
+    status_msg = "transient"
+    try:
+        conn = psycopg.connect(settings.DATABASE_URL, connect_timeout=2)
+        with conn.cursor() as cur:
+            import json
+            cur.execute(
+                """
+                INSERT INTO users (id, email, major)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, major = EXCLUDED.major;
+                """,
+                (user_id, profile.email, major)
+            )
+            cur.execute(
+                """
+                INSERT INTO profiles (user_id, parsed_resume_json, profile_embedding)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (user_id) DO UPDATE 
+                SET parsed_resume_json = EXCLUDED.parsed_resume_json, 
+                    profile_embedding = EXCLUDED.profile_embedding,
+                    updated_at = NOW();
+                """,
+                (user_id, json.dumps(profile.model_dump()), embedding)
+            )
+            conn.commit()
+        status_msg = "saved"
+    except Exception as db_err:
+        logger.warning(f"Failed to save profile {user_id} to DB: {db_err}")
+    finally:
+        if conn:
+            conn.close()
+            
+    return SaveProfileResponse(
+        user_id=user_id,
+        status=status_msg
+    )
+
 
 @app.post("/render")
 async def render_resume(
@@ -475,6 +589,150 @@ async def draft_answers(payload: DraftAnswersRequest):
             ]
         )
 
+@app.get("/mock-apply-form", response_class=HTMLResponse)
+async def mock_apply_form(
+    login: bool = Query(False),
+    captcha: bool = Query(False),
+    unmapped: bool = Query(False)
+):
+    """
+    Renders a mock job application form for local sandboxed testing of Playwright auto-apply.
+    """
+    if login:
+        return HTMLResponse(content="""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Mock Job Board - Login</title></head>
+        <body style="font-family: Arial, sans-serif; background: #0f172a; color: #f1f5f9; padding: 40px; text-align: center;">
+            <h1>Sign in to your account</h1>
+            <form action="/mock-login-submit" method="POST" style="max-width: 300px; margin: 0 auto; text-align: left;">
+                <div style="margin-bottom: 15px;">
+                    <label for="username" style="display:block; margin-bottom:5px;">Username</label>
+                    <input type="text" id="username" name="username" required style="width:100%; padding:8px;">
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <label for="password" style="display:block; margin-bottom:5px;">Password</label>
+                    <input type="password" id="password" name="password" required style="width:100%; padding:8px;">
+                </div>
+                <button type="submit" style="background:#4f46e5; color:white; border:none; padding:10px 20px; cursor:pointer;">Log In</button>
+            </form>
+        </body>
+        </html>
+        """, status_code=200)
+        
+    if captcha:
+        return HTMLResponse(content="""
+        <!DOCTYPE html>
+        <html>
+        <head><title>Mock Job Board - Verification</title></head>
+        <body style="font-family: Arial, sans-serif; background: #0f172a; color: #f1f5f9; padding: 40px; text-align: center;">
+            <h1>Verify you are human</h1>
+            <p>Please complete the challenge below</p>
+            <div style="max-width: 400px; margin: 20px auto; padding: 20px; border: 1px solid #334155;">
+                <iframe src="about:blank" title="reCAPTCHA verification challenge" style="width: 300px; height: 80px; border:none; background:#1e293b;"></iframe>
+                <form action="/mock-captcha-submit" method="POST" style="margin-top:15px; text-align: left;">
+                    <div>
+                        <label for="captcha" style="display:block; margin-bottom:5px;">Solve captcha *</label>
+                        <input type="text" id="captcha" name="captcha" required style="width:100%; padding:8px;">
+                    </div>
+                    <button type="submit" style="background:#4f46e5; color:white; border:none; padding:10px 20px; margin-top:10px; cursor:pointer;">Verify & Submit</button>
+                </form>
+            </div>
+        </body>
+        </html>
+        """, status_code=200)
+
+    # Standard Mock Form
+    unmapped_field_html = ""
+    if unmapped:
+        unmapped_field_html = """
+        <div class="field">
+            <label for="favorite_language">Favorite Coding Language *</label>
+            <input type="text" id="favorite_language" name="favorite_language" required>
+        </div>
+        """
+
+    return HTMLResponse(content=f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Mock Job Board - Application Form</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #0f172a; color: #f1f5f9; border: 1px solid #334155; border-radius: 12px; }}
+            .field {{ margin-bottom: 20px; }}
+            label {{ display: block; margin-bottom: 8px; font-weight: 600; color: #94a3b8; }}
+            input[type="text"], input[type="email"], input[type="tel"], input[type="url"], select, textarea {{
+                width: 100%; padding: 10px; border: 1px solid #334155; border-radius: 8px; background: #1e293b; color: #f1f5f9; box-sizing: border-box;
+            }}
+            button {{ background: #4f46e5; color: white; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer; }}
+            button:hover {{ background: #4338ca; }}
+        </style>
+    </head>
+    <body>
+        <h1 style="color: #6366f1;">Apply for Software Engineer</h1>
+        <p style="color: #64748b; font-size: 14px; margin-bottom: 24px;">Please fill out the form below to submit your application.</p>
+        <form action="/mock-apply-submit" method="POST">
+            <div class="field">
+                <label for="fullname">Full Name *</label>
+                <input type="text" id="fullname" name="fullname" required>
+            </div>
+            
+            <div class="field">
+                <label for="email">Email Address *</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="field">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone">
+            </div>
+            
+            <div class="field">
+                <label for="github">GitHub URL</label>
+                <input type="url" id="github" name="github">
+            </div>
+            
+            <div class="field">
+                <label for="fastapi_exp">How many years of experience do you have with FastAPI? *</label>
+                <textarea id="fastapi_exp" name="fastapi_exp" rows="3" required></textarea>
+            </div>
+            
+            <div class="field">
+                <label for="salary_exp">What is your expected salary? *</label>
+                <input type="text" id="salary_exp" name="salary_exp" required>
+            </div>
+            
+            <div class="field">
+                <label for="terms_agree">
+                    <input type="checkbox" id="terms_agree" name="terms_agree" required value="agree">
+                    Do you agree to the terms of service? *
+                </label>
+            </div>
+            
+            {unmapped_field_html}
+            
+            <button type="submit">Submit Application</button>
+        </form>
+    </body>
+    </html>
+    """, status_code=200)
+
+@app.post("/mock-apply-submit", response_class=HTMLResponse)
+async def mock_apply_submit():
+    """
+    Handles form submission for local mock job board.
+    """
+    return HTMLResponse(content="""
+    <!DOCTYPE html>
+    <html>
+    <head><title>Mock Job Board - Success</title></head>
+    <body style="font-family: Arial, sans-serif; text-align: center; margin-top: 100px; background: #0f172a; color: #f1f5f9;">
+        <h1 style="color: #10b981;">Application Submitted Successfully!</h1>
+        <p>Thank you for applying. We have received your application.</p>
+    </body>
+    </html>
+    """, status_code=200)
+
 @app.post("/apply/submit", response_model=ApplicationSubmitResponse)
 async def submit_application(payload: ApplicationSubmitRequest):
     """
@@ -484,15 +742,17 @@ async def submit_application(payload: ApplicationSubmitRequest):
     import psycopg
     import hashlib
 
-    # 1. Retrieve job_hash from database
+    # 1. Retrieve job_hash and apply_url from database
     job_hash = None
+    apply_url = None
     try:
         conn = psycopg.connect(settings.DATABASE_URL, connect_timeout=3)
         with conn.cursor() as cur:
-            cur.execute("SELECT job_hash FROM jobs WHERE id = %s;", (payload.job_id,))
+            cur.execute("SELECT job_hash, apply_url FROM jobs WHERE id = %s;", (payload.job_id,))
             row = cur.fetchone()
             if row:
                 job_hash = row[0]
+                apply_url = row[1]
         conn.close()
     except Exception as e:
         logger.warning(f"Database lookup failed for job {payload.job_id}: {e}")
@@ -505,10 +765,15 @@ async def submit_application(payload: ApplicationSubmitRequest):
             for job in jobs_list:
                 if job.get("job_id") == payload.job_id:
                     job_hash = job.get("job_hash")
+                    apply_url = job.get("apply_url")
                     break
         if not job_hash:
             # Fallback generated hash
             job_hash = hashlib.sha256(payload.job_id.encode()).hexdigest()
+
+    # If apply_url is relative, make it absolute using local backend port
+    if apply_url and apply_url.startswith("/"):
+        apply_url = f"http://localhost:{settings.BACKEND_PORT}{apply_url}"
 
     # 2. Check for duplicate application
     already_applied = False
@@ -533,33 +798,78 @@ async def submit_application(payload: ApplicationSubmitRequest):
             action_required=None
         )
 
-    # 3. Create new application record
+    # 3. Handle Tier-2 Browser Agent Auto-Apply Opt-in
+    action_required_info = None
+    agent_status = "success"
+    
+    if payload.opt_in_agent:
+        logger.info("Auto-apply agent requested.")
+        # Retrieve candidate profile
+        profile = None
+        try:
+            conn = psycopg.connect(settings.DATABASE_URL, connect_timeout=3)
+            with conn.cursor() as cur:
+                cur.execute("SELECT parsed_resume_json FROM profiles WHERE user_id = %s;", (payload.user_id,))
+                row = cur.fetchone()
+                if row:
+                    from app.schemas import ResumeParsedData
+                    profile = ResumeParsedData.model_validate(row[0])
+            conn.close()
+        except Exception as e:
+            logger.warning(f"Database lookup failed for profile {payload.user_id}: {e}")
+
+        if not profile:
+            # Fallback profile
+            from app.schemas import ResumeParsedData
+            fallback_profile_dict = {
+                "name": "Eyad Ahmed",
+                "email": "eyad@example.com",
+                "phone": "+92-300-1234567",
+                "links": ["https://github.com/eyadahmed"],
+                "education": [],
+                "experience": [],
+                "skills": [],
+                "projects": [],
+                "anchor_line": "Software Engineer",
+                "highlights_strip": []
+            }
+            profile = ResumeParsedData.model_validate(fallback_profile_dict)
+
+        target_url = apply_url or f"http://localhost:{settings.BACKEND_PORT}/mock-apply-form"
+        logger.info(f"Triggering run_auto_apply_agent for URL: {target_url}")
+        
+        from app.services.browser_agent import run_auto_apply_agent
+        agent_res = await run_auto_apply_agent(target_url, profile, payload.answers)
+        
+        if agent_res.get("status") == "needs_action":
+            agent_status = "needs_action"
+            action_required_info = agent_res.get("action_required")
+            logger.info("Agent requires user action.")
+        else:
+            logger.info("Agent auto-applied successfully.")
+
+    # 4. Create new application record if agent succeeded or wasn't used
     application_id = str(uuid.uuid4())
-    try:
-        conn = psycopg.connect(settings.DATABASE_URL, connect_timeout=3)
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                INSERT INTO applications (id, user_id, job_id, job_hash, status)
-                VALUES (%s, %s, %s, %s, 'applied');
-                """,
-                (application_id, payload.user_id, payload.job_id, job_hash)
-            )
-            conn.commit()
-        conn.close()
-    except Exception as e:
-        logger.error(f"Failed to save application to database: {e}")
-        # Fallback success for offline/unreachable DB (transient memory path)
-        return ApplicationSubmitResponse(
-            application_id=application_id,
-            status="success",
-            action_required=None
-        )
+    if agent_status == "success":
+        try:
+            conn = psycopg.connect(settings.DATABASE_URL, connect_timeout=3)
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO applications (id, user_id, job_id, job_hash, status)
+                    VALUES (%s, %s, %s, %s, 'applied');
+                    """,
+                    (application_id, payload.user_id, payload.job_id, job_hash)
+                )
+                conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.error(f"Failed to save application to database: {e}")
 
     return ApplicationSubmitResponse(
         application_id=application_id,
-        status="success",
-        action_required=None
+        status="success" if agent_status == "success" else "needs_action",
+        action_required=action_required_info
     )
 
 if __name__ == "__main__":

@@ -100,4 +100,44 @@
   - Created a robust type check for unpacking the `IN_MEMORY_JOB_CACHE` tuple, supporting both tuple and dictionary cache fallback schemas.
   - Added warning descriptions in the UI when confidence was below `0.5`, explaining exactly why the field was not auto-filled (e.g. salary expectations not specified on the resume).
 
+---
 
+## Phase 5: Semantic Match Scoring & Explainability
+- **Status**: Completed & Verified
+- **Date**: 2026-06-29
+- **What was built**:
+  - Implemented 768-dimensional Job Description and Resume Profile embedding generation using the Gemini API.
+  - Developed a blended hybrid matching engine (50% semantic similarity + 50% keyword-based scoring) with clean, robust normalization scaling.
+  - Implemented concurrent Gemini-powered match explanations for the top 3 job results.
+  - Updated the frontend to call `POST /profiles` upon manual setup edits to persist profiles and trigger embedding generation in the database.
+  - Provided graceful fallback logic for database-offline and rate-limiting (429) conditions.
+  - **Loud Warnings & UI Degradation Flags**: Added mechanism to log loud errors and flag matching explanations with degraded match warnings if deterministic dummy vector fallbacks are triggered.
+  - **Transparent Formula Breakdowns**: Surfaced detailed math formula breakdowns `[Semantic Match: X% | Keyword Match: Y% | Blend: 0.5*X% + 0.5*Y% = Z%]` directly in the matching explanations.
+- **Verification**:
+  - Authored a comprehensive unit/integration test suite in `backend/tests/test_matching_v2.py`.
+  - Ran the full test suite (`pytest`) verifying all 36 tests (34 passed, 2 skipped due to offline db pgvector queries) pass successfully with 0 regressions.
+  - Verified and captured a browser screenshot displaying transparent blend scores, custom Gemini rationales, and fallback degradation warnings:
+    - [semantic_matching_results.png](file:///C:/Users/EYAD/.gemini/antigravity-ide/brain/7e7162d5-5854-4d32-83be-896086a1e4d4/semantic_matching_results.png)
+- **Decisions**:
+  - Decided to perform embedding calculations on the normalized serializations of resume profiles and job listings.
+  - Utilized concurrent `asyncio.gather` requests for fetching match explanations, optimizing search response times significantly.
+  - Added robust validation fallbacks in uvicorn and pytest to serve heuristic descriptions if Gemini API calls fail or return 429 quota exceptions.
+  - Reset and tracked `llm_client.fallback_occurred` within each search execution context to dynamically toggle warning flags in matching explanations.
+
+---
+
+## Phase 6: Tier-2 Agentic Auto-Apply
+- **Status**: Completed & Verified
+- **Date**: 2026-06-29
+- **What was built**:
+  - Opt-in browser automation agent `run_auto_apply_agent` in `backend/app/services/browser_agent.py` using Playwright.
+  - Case-insensitive label-to-element mapping for standard fields (names, email, phone, github, linkedin) and custom screening answers.
+  - Automated detection of CAPTCHAs, login redirects, and unmapped required fields, halting and triggering a graceful handoff to the candidate.
+  - Sandbox test endpoints `/mock-apply-form` and `/mock-apply-submit` in `backend/app/main.py`.
+  - Frontend checkbox toggle and interactive handoff screens in `frontend/src/components/ApplyDrawer.tsx`.
+- **Verification**:
+  - Created automated unit tests in `backend/tests/test_auto_apply_agent.py` running against the sandbox mock server, verifying successful apply, login blocking, CAPTCHA blocking, and unmapped required fields blocking.
+  - Full backend test suite executed and passed (38 passed, 2 skipped due to offline db).
+- **Decisions**:
+  - Standardized submitting custom screening answers using their full question texts as dictionary keys to enable precise substring matching against web page labels.
+  - Standardized screenshots of form states (`auto_apply_filled.png`, `auto_apply_blocked.png`) saved to both workspace and artifacts directory.

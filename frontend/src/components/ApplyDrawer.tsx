@@ -34,6 +34,8 @@ export default function ApplyDrawer({
   const [error, setError] = useState<string | null>(null);
   const [questions, setQuestions] = useState<ScreenQuestionDraft[]>([]);
   const [status, setStatus] = useState<"draft" | "submitted">("draft");
+  const [optInAgent, setOptInAgent] = useState(false);
+  const [actionRequired, setActionRequired] = useState<{ type: string; message: string; screenshot?: string } | null>(null);
 
   useEffect(() => {
     async function fetchDraft() {
@@ -83,10 +85,10 @@ export default function ApplyDrawer({
       setSubmitting(true);
       setError(null);
 
-      // Map questions to simple ID -> Answer dict
+      // Map questions to question_text -> Answer dict so browser agent can map them by text matching
       const answersDict: Record<string, string> = {};
       questions.forEach((q) => {
-        answersDict[q.question_id] = q.drafted_answer;
+        answersDict[q.question_text] = q.drafted_answer;
       });
 
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
@@ -99,7 +101,7 @@ export default function ApplyDrawer({
           user_id: userId,
           job_id: jobId,
           answers: answersDict,
-          opt_in_agent: false,
+          opt_in_agent: optInAgent,
         }),
       });
 
@@ -107,8 +109,13 @@ export default function ApplyDrawer({
         throw new Error("Failed to submit application.");
       }
 
-      setStatus("submitted");
-      onSuccess();
+      const data = await response.json();
+      if (data.status === "needs_action") {
+        setActionRequired(data.action_required);
+      } else {
+        setStatus("submitted");
+        onSuccess();
+      }
     } catch (err: any) {
       setError(err.message || "Submission failed.");
     } finally {
@@ -188,6 +195,48 @@ export default function ApplyDrawer({
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
+        ) : actionRequired ? (
+          <div className="h-full flex flex-col justify-center items-center py-12 space-y-6 text-center animate-fade-in">
+            <div className="w-16 h-16 bg-amber-500/20 border border-amber-500/30 rounded-full flex justify-center items-center text-amber-400 animate-pulse">
+              <AlertTriangle className="w-10 h-10" />
+            </div>
+            <div>
+              <h4 className="text-xl font-bold text-slate-100">
+                Action Required (Agent Handoff)
+              </h4>
+              <p className="text-slate-400 text-sm max-w-sm mt-2">
+                {actionRequired.message}
+              </p>
+              <p className="text-xs text-slate-500 mt-2 max-w-sm">
+                The agent paused to protect your submission. Please complete the application manually on the platform.
+              </p>
+            </div>
+            
+            {actionRequired.screenshot && (
+              <div className="w-full max-w-sm rounded-xl overflow-hidden border border-slate-800 bg-slate-900/60 p-3 text-left">
+                <span className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-wider">Blocked Stage Screenshot Captured</span>
+                <p className="text-xs text-slate-500">File: <code className="text-slate-300 font-mono">{actionRequired.screenshot}</code> is saved in the workspace.</p>
+              </div>
+            )}
+
+            <div className="flex flex-col space-y-3 w-full max-w-sm pt-4">
+              <button
+                onClick={() => {
+                  setStatus("submitted");
+                  onSuccess();
+                }}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-indigo-600/20 flex justify-center items-center space-x-2"
+              >
+                <span>Mark as Applied (Manually Completed)</span>
+              </button>
+              <button
+                onClick={() => setActionRequired(null)}
+                className="w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-slate-300 rounded-xl text-sm font-semibold transition-all border border-slate-800"
+              >
+                Go Back to Form
+              </button>
+            </div>
+          </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 flex items-start space-x-3">
@@ -241,6 +290,27 @@ export default function ApplyDrawer({
                   />
                 </div>
               ))}
+            </div>
+
+            {/* Opt-in to Auto-Apply Agent Checkbox */}
+            <div className="p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/10 space-y-3">
+              <label className="flex items-start space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={optInAgent}
+                  onChange={(e) => setOptInAgent(e.target.checked)}
+                  className="mt-1 rounded border-slate-800 bg-slate-950 text-indigo-600 focus:ring-indigo-500/20 focus:ring-offset-slate-950 w-4 h-4"
+                />
+                <div className="text-xs text-slate-300 leading-relaxed">
+                  <span className="font-semibold text-slate-200">Opt-in to Auto-Apply Agent (Tier-2)</span>
+                  <p className="text-slate-400 mt-1">
+                    Uses an automated browser agent (Playwright) to automatically navigate, map details, fill screening answers, and submit your application.
+                  </p>
+                  <p className="text-amber-400/90 font-medium mt-1">
+                    ⚠️ Note: Only use on sites with accepted risk (Terms of Service / account ban risk).
+                  </p>
+                </div>
+              </label>
             </div>
 
             {/* Action Bar */}
