@@ -184,7 +184,7 @@ async def run_auto_apply_agent(
                 
                 # A. Handle File Input (Resume / CV Upload)
                 if el_type == "file":
-                    if "resume" in label_norm or "cv" in label_norm or "curriculum" in label_norm or "resume" in name_attr or "cv" in name_attr:
+                    if any(kw in label_norm or kw in name_attr or kw in id_attr for kw in ["resume", "cv", "curriculum", "filename", "file", "upload"]):
                         # Write a dummy pdf resume to upload
                         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_file:
                             tmp_file.write(b"%PDF-1.4 dummy resume content for agentic apply")
@@ -208,21 +208,37 @@ async def run_auto_apply_agent(
                         # If label matches the question text (either direction substring match)
                         if (q_norm in label_norm or label_norm in q_norm) and label_norm != "":
                             if tag_name == "select":
-                                # Find matching option
+                                is_multiple = await el.get_attribute("multiple") is not None
                                 options = await el.locator("option").all()
-                                selected = False
-                                for opt in options:
-                                    opt_text = (await opt.text_content() or "").strip()
-                                    opt_val = await opt.get_attribute("value") or ""
-                                    if ans_val.lower() in opt_text.lower() or ans_val.lower() == opt_val.lower():
-                                        await el.select_option(value=opt_val)
-                                        selected = True
-                                        break
-                                if not selected and options:
-                                    # Fallback select first non-empty option
-                                    await el.select_option(index=1)
-                                filled = True
-                                logger.info(f"Selected answer for screening: '{label_text}' -> '{ans_val}'")
+                                if is_multiple:
+                                    vals_to_select = [v.strip().lower() for v in ans_val.split(",")]
+                                    matching_vals = []
+                                    for opt in options:
+                                        opt_text = (await opt.text_content() or "").strip().lower()
+                                        opt_val = (await opt.get_attribute("value") or "").lower()
+                                        if any(val in opt_text or val == opt_val for val in vals_to_select):
+                                            val_attr = await opt.get_attribute("value")
+                                            if val_attr:
+                                                matching_vals.append(val_attr)
+                                    if matching_vals:
+                                        await el.select_option(value=matching_vals)
+                                        filled = True
+                                        logger.info(f"Selected multiple options for: '{label_text}' -> '{matching_vals}'")
+                                else:
+                                    # Find matching option
+                                    selected = False
+                                    for opt in options:
+                                        opt_text = (await opt.text_content() or "").strip()
+                                        opt_val = await opt.get_attribute("value") or ""
+                                        if ans_val.lower() in opt_text.lower() or ans_val.lower() == opt_val.lower():
+                                            await el.select_option(value=opt_val)
+                                            selected = True
+                                            break
+                                    if not selected and options:
+                                        # Fallback select first non-empty option
+                                        await el.select_option(index=1)
+                                    filled = True
+                                    logger.info(f"Selected answer for screening: '{label_text}' -> '{ans_val}'")
                             elif el_type == "checkbox":
                                 if ans_val.lower() in ["yes", "true", "agree", "checked", "1"]:
                                     await el.check()
