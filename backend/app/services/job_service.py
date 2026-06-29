@@ -100,6 +100,50 @@ def calculate_match_score(
     explanation_str = " ".join(explanations)
     return final_score, explanation_str
 
+def calculate_match_score_v2(
+    job_title: str,
+    jd_text: str,
+    job_location: Optional[str],
+    job_remote: bool,
+    profile: Optional[ResumeParsedData],
+    search_query: str,
+    profile_embedding: Optional[List[float]],
+    job_embedding: Optional[List[float]],
+    embedding_fallback: bool = False
+) -> Tuple[float, str]:
+    """
+    V2 Hybrid matching score: 50% semantic similarity + 50% rule-based score (v1)
+    """
+    v1_score, v1_explanation = calculate_match_score(
+        job_title, jd_text, job_location, job_remote, profile, search_query
+    )
+    
+    if profile_embedding and job_embedding:
+        from app.services.embedding_service import cosine_similarity
+        similarity = cosine_similarity(profile_embedding, job_embedding)
+        
+        # Scale: similarity <= 0.3 -> 0.0, >= 0.75 -> 1.0. Linear interpolation in between.
+        raw_val = (similarity - 0.3) / 0.45
+        semantic_score = min(max(raw_val, 0.0), 1.0)
+        
+        final_score = round(0.5 * semantic_score + 0.5 * v1_score, 2)
+        
+        semantic_pct = int(semantic_score * 100)
+        keyword_pct = int(v1_score * 100)
+        final_pct = int(final_score * 100)
+        
+        if embedding_fallback:
+            match_header = f"[Semantic Match (Degraded): {semantic_pct}% | Keyword Match: {keyword_pct}% | Blend: 0.5*{semantic_pct}% + 0.5*{keyword_pct}% = {final_pct}%]"
+            explanation = f"{match_header} WARNING: Gemini API embedding generation failed. Utilizing approximate match - semantic scoring is temporarily degraded. {v1_explanation}"
+        else:
+            match_header = f"[Semantic Match: {semantic_pct}% | Keyword Match: {keyword_pct}% | Blend: 0.5*{semantic_pct}% + 0.5*{keyword_pct}% = {final_pct}%]"
+            explanation = f"{match_header} {v1_explanation}"
+            
+        return final_score, explanation
+    else:
+        # Fallback to pure rule-based
+        return v1_score, v1_explanation
+
 # Rich local mock dataset for testing and fallback mode
 MOCK_JOBS = [
     {
@@ -244,11 +288,13 @@ class JobService:
         if self.db_reachable and user_id:
             conn = None
             try:
+                from app.main import clean_uuid
+                clean_uid_str = clean_uuid(user_id)
                 conn = self._get_db_connection()
                 with conn.cursor() as cursor:
                     cursor.execute(
                         "SELECT job_hash FROM applications WHERE user_id = %s;",
-                        (user_id,)
+                        (clean_uid_str,)
                     )
                     rows = cursor.fetchall()
                     applied_hashes = set(row[0] for row in rows)
@@ -259,7 +305,7 @@ class JobService:
                     conn.close()
         return applied_hashes
 
-    def _store_jobs_in_db(self, jobs: List[Dict[str, Any]]) -> Dict[str, str]:
+    async def _store_jobs_in_db(self, jobs: List[Dict[str, Any]]) -> Dict[str, str]:
         """
         Store fetched jobs in the database and return a mapping of job_hash -> job_id (UUID).
         Generates in-memory random UUIDs for database-less fallback.
@@ -272,28 +318,93 @@ class JobService:
             try:
                 conn = self._get_db_connection()
                 with conn.cursor() as cursor:
+                    # 1. Identify which job hashes already exist in the DB
+                    job_hashes = [job["job_hash"] for job in jobs]
+                    cursor.execute(
+                        "SELECT job_hash, jd_embedding IS NOT NULL FROM jobs WHERE job_hash = ANY(%s);",
+                        (job_hashes,)
+                    )
+                    existing = {row[0]: row[1] for row in cursor.fetchall()}
+                    
+                    # 2. For any job not existing or missing an embedding, generate embedding
+                    jobs_needing_embedding = []
                     for job in jobs:
                         job_hash = job["job_hash"]
-                        cursor.execute(
-                            """
-                            INSERT INTO jobs (source, title, company, location, remote, jd_text, apply_url, fetched_at, job_hash)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            ON CONFLICT (job_hash) DO UPDATE
-                            SET title = EXCLUDED.title, apply_url = EXCLUDED.apply_url
-                            RETURNING id;
-                            """,
-                            (
-                                job["source"],
-                                job["title"],
-                                job["company"],
-                                job.get("location"),
-                                job.get("remote", False),
-                                job["jd_text"],
-                                job.get("apply_url"),
-                                now,
-                                job_hash
+                        if job_hash not in existing or not existing[job_hash]:
+                            jobs_needing_embedding.append(job)
+                            
+                    # 3. Generate embeddings concurrently
+                    from app.services.embedding_service import serialize_job
+                    from app.services.llm_client import llm_client
+                    
+                    if jobs_needing_embedding:
+                        serialized_texts = [
+                            serialize_job(j["title"], j["company"], j["jd_text"])
+                            for j in jobs_needing_embedding
+                        ]
+                        embeddings = await llm_client.generate_embeddings_batch_async(serialized_texts)
+                        for job, emb in zip(jobs_needing_embedding, embeddings):
+                            job["jd_embedding"] = emb
+                            
+                    # Also, retrieve jd_embedding for already existing jobs to carry them in raw_jobs
+                    cursor.execute(
+                        "SELECT job_hash, jd_embedding FROM jobs WHERE job_hash = ANY(%s);",
+                        (job_hashes,)
+                    )
+                    existing_embeddings = {row[0]: row[1] for row in cursor.fetchall() if row[1] is not None}
+                    for job in jobs:
+                        job_hash = job["job_hash"]
+                        if job_hash in existing_embeddings:
+                            job["jd_embedding"] = existing_embeddings[job_hash]
+                    
+                    # 4. Insert or update the jobs in the database
+                    for job in jobs:
+                        job_hash = job["job_hash"]
+                        embedding = job.get("jd_embedding")
+                        
+                        if embedding:
+                            cursor.execute(
+                                """
+                                INSERT INTO jobs (source, title, company, location, remote, jd_text, apply_url, fetched_at, job_hash, jd_embedding)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (job_hash) DO UPDATE
+                                SET title = EXCLUDED.title, apply_url = EXCLUDED.apply_url, jd_embedding = EXCLUDED.jd_embedding
+                                RETURNING id;
+                                """,
+                                (
+                                    job["source"],
+                                    job["title"],
+                                    job["company"],
+                                    job.get("location"),
+                                    job.get("remote", False),
+                                    job["jd_text"],
+                                    job.get("apply_url"),
+                                    now,
+                                    job_hash,
+                                    embedding
+                                )
                             )
-                        )
+                        else:
+                            cursor.execute(
+                                """
+                                INSERT INTO jobs (source, title, company, location, remote, jd_text, apply_url, fetched_at, job_hash)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                ON CONFLICT (job_hash) DO UPDATE
+                                SET title = EXCLUDED.title, apply_url = EXCLUDED.apply_url
+                                RETURNING id;
+                                """,
+                                (
+                                    job["source"],
+                                    job["title"],
+                                    job["company"],
+                                    job.get("location"),
+                                    job.get("remote", False),
+                                    job["jd_text"],
+                                    job.get("apply_url"),
+                                    now,
+                                    job_hash
+                                )
+                            )
                         inserted_id = cursor.fetchone()[0]
                         hash_to_uuid[job_hash] = str(inserted_id)
                     conn.commit()
@@ -316,11 +427,13 @@ class JobService:
         if self.db_reachable and user_id:
             conn = None
             try:
+                from app.main import clean_uuid
+                clean_uid_str = clean_uuid(user_id)
                 conn = self._get_db_connection()
                 with conn.cursor() as cursor:
                     cursor.execute(
                         "SELECT parsed_resume_json FROM profiles WHERE user_id = %s;",
-                        (user_id,)
+                        (clean_uid_str,)
                     )
                     row = cursor.fetchone()
                     if row:
@@ -331,6 +444,89 @@ class JobService:
                 if conn:
                     conn.close()
         return None
+
+    def _fetch_profile_and_embedding(self, user_id: str) -> Tuple[Optional[ResumeParsedData], Optional[List[float]]]:
+        """Fetch candidate profile and embedding from DB if reachable, otherwise return mock fallback."""
+        if self.db_reachable and user_id:
+            conn = None
+            try:
+                from app.main import clean_uuid
+                clean_uid_str = clean_uuid(user_id)
+                conn = self._get_db_connection()
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        "SELECT parsed_resume_json, profile_embedding FROM profiles WHERE user_id = %s;",
+                        (clean_uid_str,)
+                    )
+                    row = cursor.fetchone()
+                    if row:
+                        profile = ResumeParsedData.model_validate(row[0]) if row[0] else None
+                        embedding = row[1]
+                        return profile, embedding
+            except Exception as e:
+                logger.error(f"Error fetching profile and embedding: {e}")
+            finally:
+                if conn:
+                    conn.close()
+
+        # Database is down/unreachable or user not found. Return mock fallback profile!
+        logger.info("Using mock fallback profile in job_service.")
+        mock_data = {
+            "name": "Eyad Ahmed",
+            "email": "eyad@example.com",
+            "phone": "+92-300-1234567",
+            "links": ["github.com/eyad"],
+            "skills": ["Python", "FastAPI", "React", "PostgreSQL", "Tailwind CSS"],
+            "experience": [
+                {
+                    "role": "Software Engineer",
+                    "company": "TechCorp",
+                    "start_date": "2023-01",
+                    "end_date": "Present",
+                    "bullets": ["Developed and maintained backend services using Python and FastAPI."]
+                }
+            ],
+            "education": [
+                {
+                    "school": "NUCES - FAST",
+                    "degree": "B.S. Computer Science",
+                    "date": "2023"
+                }
+            ],
+            "projects": []
+        }
+        profile = ResumeParsedData.model_validate(mock_data)
+        
+        # Try to generate embedding in-memory
+        from app.services.embedding_service import serialize_profile
+        from app.services.llm_client import llm_client
+        try:
+            serialized_text = serialize_profile(profile)
+            embedding = llm_client.generate_embedding(serialized_text)
+            return profile, embedding
+        except Exception as e:
+            logger.warning(f"Could not generate in-memory embedding for mock profile: {e}")
+            return profile, None
+
+    def _update_profile_embedding(self, user_id: str, embedding: List[float]):
+        """Saves generated profile embedding to DB."""
+        if self.db_reachable and user_id:
+            conn = None
+            try:
+                from app.main import clean_uuid
+                clean_uid_str = clean_uuid(user_id)
+                conn = self._get_db_connection()
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        "UPDATE profiles SET profile_embedding = %s WHERE user_id = %s;",
+                        (embedding, clean_uid_str)
+                    )
+                    conn.commit()
+            except Exception as e:
+                logger.error(f"Error saving profile embedding: {e}")
+            finally:
+                if conn:
+                    conn.close()
 
     # Tenacity retrier for handling API rate limits and flakiness
     @retry(
@@ -588,31 +784,68 @@ class JobService:
             raw_jobs = [j for j in raw_jobs if j.get("remote", False)]
 
         # 5. Store jobs in database and retrieve persistent UUID mappings
-        uuid_mapping = self._store_jobs_in_db(raw_jobs)
+        uuid_mapping = await self._store_jobs_in_db(raw_jobs)
         
         # 6. Retrieve User profile and applied status for personalized ranking
         profile = None
+        profile_embedding = None
         applied_hashes = set()
+        
+        from app.services.llm_client import llm_client
+        llm_client.fallback_occurred = False
+        
         if payload.user_id:
-            profile = self._fetch_profile(payload.user_id)
+            profile, profile_embedding = self._fetch_profile_and_embedding(payload.user_id)
             applied_hashes = self._get_applied_hashes(payload.user_id)
+            
+            # If database was reachable and profile exists, but profile_embedding is null,
+            # generate it on the fly and save it back to the database!
+            if profile and not profile_embedding:
+                from app.services.embedding_service import serialize_profile
+                from app.services.llm_client import llm_client
+                try:
+                    serialized_text = serialize_profile(profile)
+                    profile_embedding = llm_client.generate_embedding(serialized_text)
+                    self._update_profile_embedding(payload.user_id, profile_embedding)
+                except Exception as e:
+                    logger.warning(f"Could not generate profile embedding on the fly: {e}")
+
+        # Ensure all jobs in raw_jobs have embeddings if profile_embedding is present (for offline fallbacks)
+        if profile_embedding:
+            jobs_missing_embedding = [j for j in raw_jobs if not j.get("jd_embedding")]
+            if jobs_missing_embedding:
+                from app.services.embedding_service import serialize_job
+                from app.services.llm_client import llm_client
+                serialized_texts = [
+                    serialize_job(j["title"], j["company"], j["jd_text"])
+                    for j in jobs_missing_embedding
+                ]
+                try:
+                    embeddings = await llm_client.generate_embeddings_batch_async(serialized_texts)
+                    for job, emb in zip(jobs_missing_embedding, embeddings):
+                        job["jd_embedding"] = emb
+                except Exception as e:
+                    logger.warning(f"Could not generate missing job embeddings: {e}")
 
         # 7. Match and Rank
         final_cards = []
         for j in raw_jobs:
             job_hash = j["job_hash"]
-            score, explanation = calculate_match_score(
+            score, explanation = calculate_match_score_v2(
                 j["title"],
                 j["jd_text"],
                 j.get("location"),
                 j.get("remote", False),
                 profile,
-                payload.query
+                payload.query,
+                profile_embedding,
+                j.get("jd_embedding"),
+                llm_client.fallback_occurred
             )
             
             final_cards.append(JobCard(
                 job_id=uuid_mapping.get(job_hash, str(uuid.uuid4())),
-                source=j["source"],
+                source=j.get("source", "Direct Apply"),
                 title=j["title"],
                 company=j["company"],
                 location=j.get("location"),
@@ -629,6 +862,53 @@ class JobService:
         # Sort by Match Score descending
         final_cards.sort(key=lambda c: c.match_score or 0.0, reverse=True)
         
+        # Concurrently generate explanations for the top 3 cards using Gemini
+        if profile:
+            async def _generate_explanation_for_card(card: JobCard):
+                try:
+                    from app.services.embedding_service import serialize_profile
+                    candidate_summary = serialize_profile(profile)
+                    
+                    prompt = f"""
+                    Candidate Profile:
+                    {candidate_summary}
+                    
+                    Job Details:
+                    Title: {card.title}
+                    Company: {card.company}
+                    Location: {card.location or 'N/A'}
+                    Description: {card.jd_text}
+                    """
+                    
+                    system_instruction = (
+                        "You are an expert career advisor. Explain why the given job is a great match for the candidate. "
+                        "Write a concise, 1-2 sentence explanation. Be highly professional, specific, and candidate-focused. "
+                        "Highlight specific matching skills or experience from their profile. Do not fabricate or invent any details."
+                    )
+                    
+                    from app.schemas import MatchExplanation
+                    from app.services.llm_client import llm_client
+                    
+                    res = llm_client.generate_structured(
+                        prompt=prompt,
+                        response_schema=MatchExplanation,
+                        system_instruction=system_instruction,
+                        model_type="flash"
+                    )
+                    if res and hasattr(res, 'explanation') and res.explanation:
+                        import re
+                        prefix = ""
+                        match_pct_match = re.search(r"(\[Semantic Match:\s*\d+%\])", card.match_explanation or "")
+                        if match_pct_match:
+                            prefix = f"{match_pct_match.group(1)} "
+                        card.match_explanation = f"{prefix}{res.explanation}"
+                except Exception as e:
+                    logger.warning(f"Failed to generate LLM match explanation for job {card.title}: {e}")
+
+            explanation_tasks = [_generate_explanation_for_card(c) for c in final_cards[:3]]
+            if explanation_tasks:
+                await asyncio.gather(*explanation_tasks)
+
         # Apply slice limit
         final_cards = final_cards[:payload.limit]
 

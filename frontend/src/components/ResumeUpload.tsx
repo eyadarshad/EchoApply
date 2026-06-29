@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import { Upload, FileText, CheckCircle2, AlertCircle, Github, Download, Award, Loader2, Sparkles, RefreshCw } from "lucide-react";
 import TailorPanel from "./TailorPanel";
 import TruthfulnessGate from "./TruthfulnessGate";
@@ -278,11 +279,36 @@ export default function ResumeUpload() {
               projects: []
             };
 
-            setIntakeResult({
-              user_id: "manual-" + Math.random().toString(36).substring(2, 9),
-              parsed_resume: manualProfile,
-              github_enriched: null
+            // Call POST /profiles to save to DB and trigger embedding generation
+            const userId = "manual-" + Math.random().toString(36).substring(2, 9);
+            const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+            
+            fetch(`${backendUrl}/profiles`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                user_id: userId,
+                parsed_resume: manualProfile
+              })
+            })
+            .then(res => res.json())
+            .then(data => {
+              setIntakeResult({
+                user_id: data.user_id || userId,
+                parsed_resume: manualProfile,
+                github_enriched: null
+              });
+            })
+            .catch(err => {
+              console.error("Failed to save manual profile to backend:", err);
+              // Fallback to transient local state
+              setIntakeResult({
+                user_id: userId,
+                parsed_resume: manualProfile,
+                github_enriched: null
+              });
             });
+
             setIsManualEntry(false);
           }}
           className="p-8 border border-slate-800 rounded-3xl bg-slate-900/20 backdrop-blur-xl space-y-6 max-w-2xl mx-auto animate-fade-in"
@@ -440,26 +466,26 @@ export default function ResumeUpload() {
 
       {/* 3. Result Profile view (Idle or Finalized Done state) */}
       {intakeResult && resume && (tailorStep === "idle" || tailorStep === "done") && (
-        <div className="p-6 md:p-8 rounded-3xl border border-slate-800 bg-slate-900/30 backdrop-blur-2xl space-y-8 animate-fade-in">
+        <div className="p-6 md:p-8 rounded-3xl glass-card space-y-8 animate-fade-in">
           {/* Header Card */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-800">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-200 dark:border-slate-800">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 {tailorStep === "done" ? (
-                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                  <Sparkles className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
                 ) : (
-                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  <CheckCircle2 className="w-5 h-5 text-emerald-500 dark:text-emerald-400" />
                 )}
-                <h2 className="text-2xl font-bold text-white">
+                <h2 className="text-2xl font-bold text-slate-850 dark:text-white">
                   {resume.name}
                   {tailorStep === "done" && (
-                    <span className="ml-3 text-xs font-semibold text-indigo-400 border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className="ml-3 text-xs font-semibold text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                       Tailored (ATS: {atsScore}%)
                     </span>
                   )}
                 </h2>
               </div>
-              <p className="text-sm text-slate-400">{resume.email} {resume.phone ? `| ${resume.phone}` : ""}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{resume.email} {resume.phone ? `| ${resume.phone}` : ""}</p>
               <div className="flex flex-wrap gap-2 mt-2">
                 {resume.links.map((link, idx) => (
                   <a
@@ -467,14 +493,14 @@ export default function ResumeUpload() {
                     href={link.startsWith("http") ? link : `https://${link}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-xs text-indigo-400 hover:underline"
+                    className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
                   >
                     {link}
                   </a>
                 ))}
               </div>
               {resume.anchor_line && (
-                <div className="mt-3 text-sm font-medium italic text-indigo-300/90 border-l-2 border-indigo-500/60 pl-3 py-0.5">
+                <div className="mt-3 text-sm font-medium italic text-indigo-600 dark:text-indigo-300 border-l-2 border-indigo-500/60 pl-3 py-0.5">
                   &ldquo;{resume.anchor_line}&rdquo;
                 </div>
               )}
@@ -485,7 +511,7 @@ export default function ResumeUpload() {
               {tailorStep === "idle" && (
                 <button
                   onClick={() => setTailorStep("input")}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-sm"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   Tailor for Job
@@ -494,7 +520,7 @@ export default function ResumeUpload() {
               {tailorStep === "done" && (
                 <button
                   onClick={() => setTailorStep("input")}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/10 transition flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 transition flex items-center gap-1.5"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   Re-Tailor
@@ -503,7 +529,7 @@ export default function ResumeUpload() {
               <button
                 onClick={() => handleDownload("pdf")}
                 disabled={!!downloading}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/20 transition flex items-center gap-1.5 disabled:opacity-50"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-500/10 border border-indigo-500/30 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20 transition flex items-center gap-1.5 disabled:opacity-50"
               >
                 {downloading === "pdf" ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -515,7 +541,7 @@ export default function ResumeUpload() {
               <button
                 onClick={() => handleDownload("docx")}
                 disabled={!!downloading}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition flex items-center gap-1.5 disabled:opacity-50"
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-300 hover:bg-emerald-500/20 transition flex items-center gap-1.5 disabled:opacity-50"
               >
                 {downloading === "docx" ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -534,7 +560,7 @@ export default function ResumeUpload() {
                   setTruthfulnessReport(null);
                   setAtsScore(0);
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-700 text-slate-400 hover:bg-slate-800 transition"
+                className="px-4 py-2 rounded-xl text-xs font-semibold border border-slate-350 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
               >
                 Reset
               </button>
@@ -544,11 +570,11 @@ export default function ResumeUpload() {
           {/* Highlights strip callout */}
           {resume.highlights_strip && resume.highlights_strip.length > 0 && (
             <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 space-y-2 animate-fade-in">
-              <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Relevance & Highlights</h4>
-              <ul className="grid md:grid-cols-2 gap-3 text-xs text-slate-300 pl-4 list-disc font-light">
+              <h4 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">Relevance & Highlights</h4>
+              <ul className="grid md:grid-cols-2 gap-3 text-xs text-slate-600 dark:text-slate-300 pl-4 list-disc font-light">
                 {resume.highlights_strip.map((hl: any, idx: number) => (
                   <li key={idx}>
-                    <span className="font-semibold text-slate-200">{hl.skill}</span>: {hl.relevance_reason}
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{hl.skill}</span>: {hl.relevance_reason}
                   </li>
                 ))}
               </ul>
@@ -556,20 +582,38 @@ export default function ResumeUpload() {
           )}
 
           {/* Navigation Tabs */}
-          <div className="flex border-b border-slate-800 overflow-x-auto whitespace-nowrap">
+          <div className="flex gap-2 border-b border-slate-200 dark:border-slate-800/80 pb-2 overflow-x-auto whitespace-nowrap">
             {(["experience", "projects", "education", "skills", "github", "jobs"] as const).map((tab) => {
               if (tab === "github" && !github) return null;
+              const isActive = activeTab === tab;
+              
+              const labelMap: Record<string, string> = {
+                experience: "Work History",
+                projects: "Projects",
+                education: "Education",
+                skills: "Skill Map",
+                github: "GitHub Insights",
+                jobs: "Job Matches",
+              };
+              
               return (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 border-b-2 text-sm font-semibold transition ${
-                    activeTab === tab
-                      ? "border-indigo-500 text-indigo-400"
-                      : "border-transparent text-slate-400 hover:text-slate-200"
+                  className={`relative px-4 py-2 rounded-xl text-sm font-bold transition duration-300 ${
+                    isActive
+                      ? "text-indigo-600 dark:text-indigo-400"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                   }`}
                 >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                  {isActive && (
+                    <motion.div
+                      layoutId="active-tab-capsule"
+                      className="absolute inset-0 bg-indigo-500/10 dark:bg-indigo-500/10 border-b-2 border-indigo-500 z-0 rounded-xl"
+                      transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                    />
+                  )}
+                  <span className="relative z-10">{labelMap[tab]}</span>
                 </button>
               );
             })}
@@ -581,20 +625,20 @@ export default function ResumeUpload() {
             {activeTab === "experience" && (
               <div className="space-y-6">
                 {resume.experience.length === 0 ? (
-                  <p className="text-slate-400 text-sm">No work experience listed (Fresher profile).</p>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm">No work experience listed (Fresher profile).</p>
                 ) : (
                   resume.experience.map((exp, idx) => (
-                    <div key={idx} className="space-y-2">
+                    <div key={idx} className="space-y-2 text-left">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h4 className="text-base font-bold text-slate-200">{exp.role}</h4>
-                          <span className="text-sm text-slate-400">{exp.company} {exp.location ? `· ${exp.location}` : ""}</span>
+                          <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">{exp.role}</h4>
+                          <span className="text-sm text-slate-500 dark:text-slate-400">{exp.company} {exp.location ? `· ${exp.location}` : ""}</span>
                         </div>
-                        <span className="text-xs text-indigo-400 font-semibold bg-indigo-500/10 px-2.5 py-1 rounded-full">
+                        <span className="text-xs text-indigo-650 dark:text-indigo-400 font-semibold bg-indigo-500/10 px-2.5 py-1 rounded-full">
                           {exp.start_date} &ndash; {exp.end_date || "Present"}
                         </span>
                       </div>
-                      <ul className="list-disc pl-5 text-sm text-slate-300 space-y-1">
+                      <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-300 space-y-1">
                         {exp.bullets.map((bullet: string, bIdx: number) => (
                           <li key={bIdx}>{bullet}</li>
                         ))}
@@ -609,24 +653,24 @@ export default function ResumeUpload() {
             {activeTab === "projects" && (
               <div className="space-y-6">
                 {resume.projects.length === 0 ? (
-                  <p className="text-slate-400 text-sm">No personal projects listed.</p>
+                  <p className="text-slate-550 dark:text-slate-400 text-sm">No personal projects listed.</p>
                 ) : (
                   resume.projects.map((proj, idx) => (
-                    <div key={idx} className="space-y-2">
+                    <div key={idx} className="space-y-2 text-left">
                       <div className="flex justify-between items-center">
-                        <h4 className="text-base font-bold text-slate-200">{proj.name}</h4>
+                        <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">{proj.name}</h4>
                         {proj.link && (
                           <a
                             href={proj.link.startsWith("http") ? proj.link : `https://${proj.link}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-xs text-indigo-400 hover:underline"
+                            className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
                           >
                             Project Link
                           </a>
                         )}
                       </div>
-                      <ul className="list-disc pl-5 text-sm text-slate-300 space-y-1">
+                      <ul className="list-disc pl-5 text-sm text-slate-600 dark:text-slate-300 space-y-1">
                         {proj.bullets.map((bullet: string, bIdx: number) => (
                           <li key={bIdx}>{bullet}</li>
                         ))}
@@ -639,19 +683,19 @@ export default function ResumeUpload() {
 
             {/* Education Panel */}
             {activeTab === "education" && (
-              <div className="space-y-6">
+              <div className="space-y-6 text-left">
                 {resume.education.map((edu, idx) => (
                   <div key={idx} className="space-y-1">
                     <div className="flex justify-between items-start">
-                      <h4 className="text-base font-bold text-slate-200">
+                      <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">
                         {edu.degree} {edu.major ? `in ${edu.major}` : ""}
                       </h4>
-                      <span className="text-xs text-indigo-400 font-semibold bg-indigo-500/10 px-2.5 py-1 rounded-full">
+                      <span className="text-xs text-indigo-650 dark:text-indigo-400 font-semibold bg-indigo-500/10 px-2.5 py-1 rounded-full">
                         {edu.date}
                       </span>
                     </div>
-                    <p className="text-sm text-slate-400">{edu.school}</p>
-                    {edu.gpa && <span className="text-xs text-emerald-400 font-medium">GPA: {edu.gpa}</span>}
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{edu.school}</p>
+                    {edu.gpa && <span className="text-xs text-emerald-600 dark:text-emerald-405 font-semibold">GPA: {edu.gpa}</span>}
                   </div>
                 ))}
               </div>
@@ -663,7 +707,7 @@ export default function ResumeUpload() {
                 {resume.skills.map((skill, idx) => (
                   <span
                     key={idx}
-                    className="px-3.5 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs border border-slate-700 font-medium"
+                    className="px-3.5 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs border border-slate-200 dark:border-slate-700 font-semibold shadow-sm"
                   >
                     {skill}
                   </span>
@@ -673,19 +717,19 @@ export default function ResumeUpload() {
 
             {/* GitHub Panel */}
             {activeTab === "github" && github && (
-              <div className="space-y-6">
+              <div className="space-y-6 text-left">
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-center">
-                    <span className="text-xs text-slate-400">Total GitHub Stars</span>
-                    <span className="text-2xl font-bold text-indigo-300 flex items-center gap-1.5 mt-1">
+                  <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col justify-center shadow-sm">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Total GitHub Stars</span>
+                    <span className="text-2xl font-bold text-indigo-650 dark:text-indigo-300 flex items-center gap-1.5 mt-1">
                       <Award className="w-5 h-5 text-yellow-500" />
                       {github.total_stars}
                     </span>
                   </div>
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-center">
-                    <span className="text-xs text-slate-400">Enriched Username</span>
-                    <span className="text-lg font-bold text-slate-200 mt-1 flex items-center gap-1.5">
-                      <Github className="w-4 h-4 text-indigo-400" />
+                  <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col justify-center shadow-sm">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">Enriched Username</span>
+                    <span className="text-lg font-bold text-slate-800 dark:text-slate-200 mt-1 flex items-center gap-1.5">
+                      <Github className="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
                       {github.username}
                     </span>
                   </div>
@@ -693,31 +737,31 @@ export default function ResumeUpload() {
 
                 {/* Top Repositories */}
                 <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-slate-300 uppercase tracking-wider">Top Repositories</h4>
+                  <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">Top Repositories</h4>
                   {github.top_repositories.length === 0 ? (
-                    <p className="text-slate-500 text-xs">No repositories found or public access rate-limited.</p>
+                    <p className="text-slate-500 dark:text-slate-400 text-xs">No repositories found or public access rate-limited.</p>
                   ) : (
                     <div className="grid md:grid-cols-2 gap-4">
                       {github.top_repositories.map((repo, idx) => (
-                        <div key={idx} className="p-4 rounded-2xl bg-slate-950/50 border border-slate-800 flex flex-col justify-between space-y-4 hover:border-slate-750 transition">
+                        <div key={idx} className="p-4 rounded-2xl bg-slate-100/50 dark:bg-slate-950/50 border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4 hover:border-indigo-500/20 transition shadow-sm">
                           <div>
                             <div className="flex justify-between items-center">
                               <a
                                 href={repo.url}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-sm font-bold text-indigo-400 hover:underline"
+                                className="text-sm font-bold text-indigo-650 dark:text-indigo-400 hover:underline"
                               >
                                 {repo.name}
                               </a>
-                              <span className="text-xs text-yellow-500 font-semibold bg-yellow-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="text-xs text-yellow-600 dark:text-yellow-500 font-semibold bg-yellow-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
                                 ★ {repo.stars}
                               </span>
                             </div>
-                            <p className="text-xs text-slate-400 mt-2 line-clamp-2">{repo.description || "No description provided."}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-400 mt-2 line-clamp-2">{repo.description || "No description provided."}</p>
                           </div>
                           {repo.language && (
-                            <span className="text-xs text-slate-300 font-semibold bg-slate-800/80 w-max px-2.5 py-1 rounded-lg">
+                            <span className="text-xs text-slate-700 dark:text-slate-350 font-semibold bg-slate-200 dark:bg-slate-800/80 w-max px-2.5 py-1 rounded-lg">
                               {repo.language}
                             </span>
                           )}
