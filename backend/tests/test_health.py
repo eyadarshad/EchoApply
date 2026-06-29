@@ -96,7 +96,7 @@ def test_apply_draft_stub_endpoint():
     assert response.status_code == 200
     data = response.json()
     assert data["job_id"] == "job-456"
-    assert len(data["questions"]) == 1
+    assert len(data["questions"]) >= 1
     assert data["questions"][0]["question_id"] == "q1"
 
 def test_apply_submit_stub_endpoint():

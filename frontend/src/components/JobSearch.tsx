@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { Search, MapPin, Briefcase, ChevronDown, ChevronUp, Loader2, AlertTriangle, Sparkles, CheckCircle, ExternalLink } from "lucide-react";
+import { Search, MapPin, Briefcase, ChevronDown, ChevronUp, Loader2, AlertTriangle, Sparkles, CheckCircle, ExternalLink, Send } from "lucide-react";
+import ApplyDrawer from "./ApplyDrawer";
 
 interface JobCard {
   job_id: string;
@@ -35,6 +36,7 @@ export default function JobSearch({ user_id, parsed_resume, onSelectJobForTailor
   const [jobs, setJobs] = useState<JobCard[]>([]);
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [searchTriggered, setSearchTriggered] = useState(false);
+  const [activeApplyJob, setActiveApplyJob] = useState<JobCard | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -216,6 +218,17 @@ export default function JobSearch({ user_id, parsed_resume, onSelectJobForTailor
                           <Sparkles className="w-3.5 h-3.5" />
                           Tailor Resume
                         </button>
+                        <button
+                          onClick={() => setActiveApplyJob(job)}
+                          className={`px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 ${
+                            job.is_applied
+                              ? "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200 border border-slate-700/50"
+                              : "bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white shadow-lg shadow-emerald-600/10"
+                          }`}
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          {job.is_applied ? "Re-apply" : "Apply Now"}
+                        </button>
                         {job.apply_url && (
                           <a
                             href={job.apply_url}
@@ -258,6 +271,23 @@ export default function JobSearch({ user_id, parsed_resume, onSelectJobForTailor
             </div>
           )}
         </div>
+      )}
+
+      {activeApplyJob && (
+        <ApplyDrawer
+          userId={user_id}
+          jobId={activeApplyJob.job_id}
+          jobTitle={activeApplyJob.title}
+          jobCompany={activeApplyJob.company}
+          onClose={() => setActiveApplyJob(null)}
+          onSuccess={() => {
+            setJobs(prevJobs =>
+              prevJobs.map(j =>
+                j.job_id === activeApplyJob.job_id ? { ...j, is_applied: true } : j
+              )
+            );
+          }}
+        />
       )}
     </div>
   );

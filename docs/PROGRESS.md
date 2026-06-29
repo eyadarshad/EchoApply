@@ -79,3 +79,25 @@
   - Integrated the Jobs tab directly alongside Experience/Skills tabs on the profile dashboard, optimizing navigation hierarchy.
   - Modified CORS configurations to support frontend port 3005 to permit development and verification sandboxing.
 
+---
+
+## Phase 4: Smart Apply (Tier 1)
+- **Status**: Completed & Verified
+- **Date**: 2026-06-29
+- **What was built**:
+  - `/apply/draft` endpoint that drafts personalized, truth-abiding answers to screening questions using Gemini (FastAPI skill experience, visa sponsorship, expected salary, notice period) and calculates confidence scores/warnings.
+  - `/apply/submit` endpoint with duplicate-application checks and database-less fallbacks.
+  - Glassmorphic slide-out `ApplyDrawer.tsx` component displaying questions with `Auto-Filled` and `Needs Input` status badges.
+  - Submitting applications records state, shows a circular check success feedback block, closes, and updates job cards to display the green check `Applied` badge and a `Re-apply` button action.
+- **Verification**:
+  - Created unit/integration tests in `backend/tests/test_apply.py` verifying draft logic, submission success, and duplicate handling.
+  - Ran the full test suite (`pytest`) verifying all 30 tests pass.
+  - Walked through E2E apply flow in the browser and captured:
+    - [apply_drawer_prefill.png](file:///C:/Users/EYAD/.gemini/antigravity-ide/brain/7e7162d5-5854-4d32-83be-896086a1e4d4/apply_drawer_prefill.png)
+    - [apply_success.png](file:///C:/Users/EYAD/.gemini/antigravity-ide/brain/7e7162d5-5854-4d32-83be-896086a1e4d4/apply_success.png)
+    - [applied_badge.png](file:///C:/Users/EYAD/.gemini/antigravity-ide/brain/7e7162d5-5854-4d32-83be-896086a1e4d4/applied_badge.png)
+- **Decisions**:
+  - Created a robust type check for unpacking the `IN_MEMORY_JOB_CACHE` tuple, supporting both tuple and dictionary cache fallback schemas.
+  - Added warning descriptions in the UI when confidence was below `0.5`, explaining exactly why the field was not auto-filled (e.g. salary expectations not specified on the resume).
+
+
