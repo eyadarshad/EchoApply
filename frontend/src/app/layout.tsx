@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ThemeProvider } from "../components/ThemeContext";
+import ThreeBackground from "../components/ThreeBackground";
 
 export const metadata: Metadata = {
   title: "AI Resume Generator & Smart Apply",
@@ -13,7 +15,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <ThemeProvider>
+          <ThreeBackground />
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
