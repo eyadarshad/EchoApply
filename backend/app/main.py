@@ -693,6 +693,11 @@ async def mock_apply_form(
             </div>
             
             <div class="field">
+                <label for="resume">Upload Resume / CV *</label>
+                <input type="file" id="resume" name="resume" required>
+            </div>
+            
+            <div class="field">
                 <label for="fastapi_exp">How many years of experience do you have with FastAPI? *</label>
                 <textarea id="fastapi_exp" name="fastapi_exp" rows="3" required></textarea>
             </div>
