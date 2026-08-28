@@ -24,8 +24,9 @@
 
 <div align="center">
 
-### Intelligent Dashboard & Ambient Pretext Serpent
-![Echo Apply Dashboard](./docs/images/dashboard_preview.png)
+### Intelligent Landing Page & Ambient Pretext Serpent
+<img width="960" height="540" alt="Screenshot 2026-08-28 142828" src="https://github.com/user-attachments/assets/96fb008c-0e98-4a38-a78e-d32dafb1a3fd" />
+
 *Real-time job matching, custom resume manager, and zero-reflow typography physics.*
 
 </div>
@@ -34,13 +35,17 @@
 
 | Truthfulness-Gated Resume Tailoring | Dynamic Cover Letter Studio |
 | :---: | :---: |
-| ![Resume Tailoring](./docs/images/tailor_preview.png) | ![Cover Letter Generator](./docs/images/cover_letter_preview.png) |
+| <img width="593" height="386" alt="image" src="https://github.com/user-attachments/assets/6784ea57-87b9-46ff-a4d9-25d6056910c8" />
+ | <img width="959" height="415" alt="image" src="https://github.com/user-attachments/assets/fd064a81-1281-49ba-94f4-d34aacd7015a" />
+ |
 | *Multi-stage pipeline rewriting with strict zero-hallucination validation.* | *Instant role-targeted cover letters with automatic fallback resilience.* |
 
-| AI Mock Interview Coach (STAR Method) | Autonomous Browser Auto-Applier |
+| AI Mock Interview Coach (STAR Method) | Linkedin/CV/Resume Audit |
 | :---: | :---: |
-| ![Interview Practice](./docs/images/interview_preview.png) | ![Browser Agent](./docs/images/auto_apply_preview.png) |
-| *Dynamic question generator with real-time STAR compliance scoring.* | *Playwright agent with human-in-the-loop CAPTCHA detection.* |
+|<img width="959" height="410" alt="image" src="https://github.com/user-attachments/assets/77936983-560c-4b1a-b416-ebcf03e3fc21" />
+ | <img width="960" height="540" alt="image" src="https://github.com/user-attachments/assets/26e79db6-5a8e-40e5-a6a2-44caab7a01d3" />
+ |
+| *Dynamic question generator with real-time STAR compliance scoring.* |** |
 
 ---
 
