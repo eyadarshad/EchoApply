@@ -381,3 +381,32 @@ async def run_job_alerts_check() -> Dict[str, Any]:
             logger.error(f"Error checking matching jobs for alert {alert_id}: {alert_err}")
             
     return {"status": "success", "processed_alerts": len(searches), "matches": results}
+
+
+async def start_keep_alive_ping():
+    """
+    Sends a lightweight health check ping to the public backend URL every 9 minutes (540s)
+    to prevent free-tier instances (e.g. Render) from spinning down due to inactivity.
+    """
+    # Render automatically sets RENDER_EXTERNAL_URL; fallback to BACKEND_URL
+    backend_url = os.getenv("RENDER_EXTERNAL_URL") or os.getenv("BACKEND_URL") or "https://echo-apply-backend.onrender.com"
+    if not backend_url.startswith("http"):
+        backend_url = f"https://{backend_url}"
+    
+    health_url = f"{backend_url.rstrip('/')}/api/health"
+    logger.info(f"[KeepAlive] Keep-alive worker active targeting: {health_url}")
+    
+    # Wait 60s after initial server boot
+    await asyncio.sleep(60)
+    
+    import httpx
+    while True:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                res = await client.get(health_url)
+                logger.info(f"[KeepAlive] Heartbeat ping sent to {health_url} -> Status {res.status_code}")
+        except Exception as e:
+            logger.debug(f"[KeepAlive] Heartbeat ping non-critical notice: {e}")
+            
+        # Ping every 9 minutes (540s), well within Render's 15-minute window
+        await asyncio.sleep(540)

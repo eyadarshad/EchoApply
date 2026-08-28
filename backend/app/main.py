@@ -52,8 +52,9 @@ import asyncio
 async def lifespan(app: FastAPI):
     # Startup
     await startup_db()
-    from app.tasks import start_task_worker
+    from app.tasks import start_task_worker, start_keep_alive_ping
     asyncio.create_task(start_task_worker())
+    asyncio.create_task(start_keep_alive_ping())
     yield
     # Shutdown
     await shutdown_db()
