@@ -118,14 +118,21 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
 
-# --- Base Health Endpoint ---
+# --- Base Root & Health Endpoints ---
+@app.get("/", tags=["system"])
+async def root():
+    """Root endpoint for status check and uptime monitoring."""
+    return {"status": "ok", "service": "Echo Apply API", "version": "1.0.0", "docs": "/docs"}
+
 @app.get("/health", response_model=HealthResponse, tags=["system"])
+@app.get("/api/health", response_model=HealthResponse, tags=["system"])
 async def health_check():
     """Verify backend and database connection status."""
     return HealthResponse(status="ok")
 
 # --- Echo Endpoint ---
 @app.post("/echo", response_model=EchoResponse, tags=["system"])
+@app.post("/api/echo", response_model=EchoResponse, tags=["system"])
 async def echo_message(payload: EchoRequest):
     """Echo endpoint for frontend validation of connection."""
     return EchoResponse(message=payload.message, status="success")
