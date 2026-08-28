@@ -119,14 +119,14 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
 
-# --- Base Root & Health Endpoints ---
-@app.get("/", tags=["system"])
+# --- Base Root & Health Endpoints (Supports GET and HEAD for UptimeRobot / Ping monitors) ---
+@app.api_route("/", methods=["GET", "HEAD"], tags=["system"])
 async def root():
     """Root endpoint for status check and uptime monitoring."""
     return {"status": "ok", "service": "Echo Apply API", "version": "1.0.0", "docs": "/docs"}
 
-@app.get("/health", response_model=HealthResponse, tags=["system"])
-@app.get("/api/health", response_model=HealthResponse, tags=["system"])
+@app.api_route("/health", methods=["GET", "HEAD"], response_model=HealthResponse, tags=["system"])
+@app.api_route("/api/health", methods=["GET", "HEAD"], response_model=HealthResponse, tags=["system"])
 async def health_check():
     """Verify backend and database connection status."""
     return HealthResponse(status="ok")
