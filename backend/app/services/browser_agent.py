@@ -5,17 +5,20 @@ import logging
 from typing import Dict, Any, Optional
 from playwright.async_api import async_playwright
 from app.schemas import ResumeParsedData
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Constants for screenshot paths
-SCREENSHOT_DIR = "C:/Users/EYAD/.gemini/antigravity-ide/brain/7e7162d5-5854-4d32-83be-896086a1e4d4"
-WORKSPACE_DIR = "d:/Project 101"
+# Constants for screenshot paths — use portable env-driven directories
+SCREENSHOT_DIR = os.path.join(settings.DATA_DIR, "screenshots")
+WORKSPACE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 async def run_auto_apply_agent(
     apply_url: str,
     profile: ResumeParsedData,
-    answers: Dict[str, str]
+    answers: Dict[str, str],
+    user_id: Optional[str] = None,
+    task_id: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Tier-2 Agentic Auto-Apply using Playwright.
@@ -23,7 +26,29 @@ async def run_auto_apply_agent(
     auto-fills candidate profile and screening answers, checks for unmapped required fields,
     takes screenshots, and submits the form.
     """
-    logger.info(f"Starting Tier-2 Agentic Auto-Apply on URL: {apply_url}")
+    # Helper to broadcast logs to frontend
+    async def log_and_broadcast(message: str, level: str = "info"):
+        if level == "warning":
+            logger.warning(message)
+        elif level == "error":
+            logger.error(message)
+        else:
+            logger.info(message)
+            
+        if task_id:
+            try:
+                from app.tasks import FASTAPI_TASK_REGISTRY
+                if task_id in FASTAPI_TASK_REGISTRY:
+                    FASTAPI_TASK_REGISTRY[task_id]["logs"].append(message)
+            except Exception:
+                pass
+            try:
+                from app.main import manager
+                await manager.broadcast(task_id, message)
+            except Exception:
+                pass
+
+    await log_and_broadcast(f"Starting Tier-2 Agentic Auto-Apply on URL: {apply_url}")
     
     # 1. Initialize Playwright
     async with async_playwright() as p:
@@ -36,10 +61,47 @@ async def run_auto_apply_agent(
         page = await context.new_page()
         
         try:
+            # Determine platform to inject cookies for
+            platform = None
+            if "linkedin.com" in apply_url:
+                platform = "linkedin"
+            elif "indeed.com" in apply_url:
+                platform = "indeed"
+            elif "glassdoor.com" in apply_url:
+                platform = "glassdoor"
+
+            if platform and user_id:
+                try:
+                    from app.utils import get_platform_cookies
+                    cookies = await get_platform_cookies(user_id, platform)
+                    if cookies:
+                        await log_and_broadcast(f"Injecting {len(cookies)} active session cookies for {platform}...")
+                        playwright_cookies = []
+                        for c in cookies:
+                            expires = c.get("expirationDate") or c.get("expires")
+                            pc = {
+                                "name": c["name"],
+                                "value": c["value"],
+                                "domain": c["domain"],
+                                "path": c.get("path", "/"),
+                                "secure": c.get("secure", True),
+                                "httpOnly": c.get("httpOnly", False),
+                            }
+                            if expires is not None:
+                                try:
+                                    pc["expires"] = float(expires)
+                                except (ValueError, TypeError):
+                                    pass
+                            playwright_cookies.append(pc)
+                        await context.add_cookies(playwright_cookies)
+                        await log_and_broadcast("Session cookies successfully injected.")
+                except Exception as cookie_err:
+                    logger.error(f"Failed to inject session cookies: {cookie_err}")
+
             # Navigate to job application page
             logger.info(f"Navigating to {apply_url}...")
             await page.goto(apply_url, wait_until="networkidle", timeout=15000)
-            
+
             # Helper to save screenshots to both workspace and artifacts directory
             async def save_screenshot(filename: str):
                 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
@@ -48,7 +110,6 @@ async def run_auto_apply_agent(
                 
                 try:
                     await page.screenshot(path=ws_path, full_page=True)
-                    # Copy to artifacts directory
                     shutil.copy2(ws_path, art_path)
                     logger.info(f"Saved screenshot to {ws_path} and {art_path}")
                 except Exception as e:
@@ -71,11 +132,16 @@ async def run_auto_apply_agent(
                 logger.warning("Login block detected.")
                 await save_screenshot("auto_apply_blocked.png")
                 await browser.close()
+                
+                message = "A login screen was detected. Please log in manually before continuing."
+                if platform:
+                    message = f"Active session for {platform.capitalize()} is missing or expired. Please open the Chrome extension and click 'Sync Sessions Now' to refresh your session."
+                
                 return {
                     "status": "needs_action",
                     "action_required": {
                         "type": "login_required",
-                        "message": "A login screen was detected. Please log in manually before continuing.",
+                        "message": message,
                         "screenshot": "auto_apply_blocked.png"
                     }
                 }
@@ -185,22 +251,86 @@ async def run_auto_apply_agent(
                 # A. Handle File Input (Resume / CV Upload)
                 if el_type == "file":
                     if any(kw in label_norm or kw in name_attr or kw in id_attr for kw in ["resume", "cv", "curriculum", "filename", "file", "upload"]):
-                        # Write a dummy pdf resume to upload
+                        # Try to render a real PDF resume dynamically from profile
+                        pdf_data = None
+                        try:
+                            from app.services.resume_generator import generate_resume_pdf
+                            pdf_data = generate_resume_pdf(profile)
+                            logger.info("Generated real PDF resume dynamically for file upload.")
+                        except Exception as e:
+                            logger.warning(f"Could not generate real PDF resume dynamically, falling back to dummy: {e}")
+                            pdf_data = b"%PDF-1.4 dummy resume content for agentic apply"
+                        
+                        # Write the PDF to upload
                         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_file:
-                            tmp_file.write(b"%PDF-1.4 dummy resume content for agentic apply")
+                            tmp_file.write(pdf_data)
                             tmp_file_path = tmp_file.name
                         
                         try:
                             await el.set_input_files(tmp_file_path)
                             filled = True
-                            logger.info("Uploaded dummy resume file.")
+                            logger.info("Uploaded resume file.")
                         finally:
                             try:
                                 os.remove(tmp_file_path)
                             except Exception:
                                 pass
                 
-                # B. Match Custom Screening Answers from frontend
+                # B. Match Custom Screening Answers from semantic memory (Vector KB)
+                if not filled and label_text != "":
+                    try:
+                        from app.services.screening_kb import search_screening_answer
+                        uid_to_use = user_id or "default-user"
+                        matched_answer = search_screening_answer(uid_to_use, label_text)
+                        if matched_answer:
+                            logger.info(f"Retrieved matching answer from semantic memory: '{label_text}' -> '{matched_answer}'")
+                            if tag_name == "select":
+                                is_multiple = await el.get_attribute("multiple") is not None
+                                options = await el.locator("option").all()
+                                if is_multiple:
+                                    vals_to_select = [v.strip().lower() for v in matched_answer.split(",")]
+                                    matching_vals = []
+                                    for opt in options:
+                                        opt_text = (await opt.text_content() or "").strip().lower()
+                                        opt_val = (await opt.get_attribute("value") or "").lower()
+                                        if any(val in opt_text or val == opt_val for val in vals_to_select):
+                                            val_attr = await opt.get_attribute("value")
+                                            if val_attr:
+                                                matching_vals.append(val_attr)
+                                    if matching_vals:
+                                        await el.select_option(value=matching_vals)
+                                        filled = True
+                                else:
+                                    selected = False
+                                    for opt in options:
+                                        opt_text = (await opt.text_content() or "").strip()
+                                        opt_val = await opt.get_attribute("value") or ""
+                                        if matched_answer.lower() in opt_text.lower() or matched_answer.lower() == opt_val.lower():
+                                            await el.select_option(value=opt_val)
+                                            selected = True
+                                            break
+                                    if not selected and options:
+                                        await el.select_option(index=1)
+                                    filled = True
+                            elif el_type == "checkbox":
+                                if matched_answer.lower() in ["yes", "true", "agree", "checked", "1"]:
+                                    await el.check()
+                                else:
+                                    await el.uncheck()
+                                filled = True
+                            elif el_type == "radio":
+                                radio_val = await el.get_attribute("value") or ""
+                                radio_label = label_norm
+                                if matched_answer.lower() in radio_val.lower() or matched_answer.lower() in radio_label:
+                                    await el.check()
+                                    filled = True
+                            else:
+                                await el.fill(matched_answer)
+                                filled = True
+                    except Exception as kb_err:
+                        logger.error(f"Error querying semantic memory: {kb_err}")
+
+                # C. Match Custom Screening Answers from current session answers dict
                 # We perform substring comparisons on question texts
                 if not filled and answers:
                     for q_text, ans_val in answers.items():
@@ -357,73 +487,14 @@ async def run_auto_apply_agent(
             # 5. Take screenshot of the successfully filled form
             await save_screenshot("auto_apply_filled.png")
 
-            # 6. Submit the form
-            submit_button = None
-            submit_selectors = [
-                "button[type='submit']",
-                "input[type='submit']",
-                "button:has-text('Submit')",
-                "button:has-text('Apply')",
-                "button:has-text('Submit Application')",
-                "button:has-text('Send')"
-            ]
-            
-            for selector in submit_selectors:
-                btn = page.locator(selector).first
-                if await btn.count() > 0 and await btn.is_visible() and await btn.is_enabled():
-                    submit_button = btn
-                    break
-            
-            if not submit_button:
-                # Scan all buttons for submit text
-                all_buttons = await page.locator("button").all()
-                for btn in all_buttons:
-                    btn_text = (await btn.text_content() or "").lower()
-                    if "submit" in btn_text or "apply" in btn_text or "send" in btn_text:
-                        if await btn.is_visible() and await btn.is_enabled():
-                            submit_button = btn
-                            break
-            
-            if submit_button:
-                logger.info("Clicking the submit button...")
-                await submit_button.click()
-                
-                # Wait for navigation or success message
-                await page.wait_for_timeout(2000)
-                
-                final_html = (await page.content()).lower()
-                success_keywords = ["thank you", "success", "received", "submitted", "confirmed", "application sent", "applied"]
-                success_detected = any(kw in final_html for kw in success_keywords)
-                
-                if success_detected:
-                    logger.info("Application submission success detected on page.")
-                    await save_screenshot("auto_apply_success.png")
-                    await browser.close()
-                    return {
-                        "status": "success",
-                        "application_id": "agent-submitted"
-                    }
-                else:
-                    # Even if success text is not explicitly detected, if there was no obvious error, we treat it as success or log it
-                    logger.warning("Submit button clicked, but explicit success keywords not found on response page.")
-                    await save_screenshot("auto_apply_success.png")
-                    await browser.close()
-                    return {
-                        "status": "success",
-                        "application_id": "agent-submitted-unverified"
-                    }
-            else:
-                msg = "Form filled successfully, but submit button could not be located."
-                logger.error(msg)
-                await browser.close()
-                return {
-                    "status": "needs_action",
-                    "action_required": {
-                        "type": "submit_failed",
-                        "message": msg,
-                        "screenshot": "auto_apply_filled.png"
-                    }
-                }
+            # 6. Platform Compliance Pivot: Stop before submitting.
+            # We do NOT click submit anymore. The user is in full control.
+            await log_and_broadcast("Form prefilled successfully. Copilot mode active: manual review and submission required.")
+            await browser.close()
+            return {
+                "status": "success",
+                "application_id": "copilot-prepared"
+            }
                 
         except Exception as err:
             logger.error(f"Error during browser agent execution: {err}")

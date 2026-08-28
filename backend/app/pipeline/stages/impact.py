@@ -1,11 +1,12 @@
 import logging
 from typing import List, Dict, Any
 from app.schemas import ResumeParsedData, JDAnalysisResult, TargetedRewriteResult, ImpactPassResult, HighlightSkill
-from app.services.llm_client import llm_client
+from app.services.llm_client import llm_client_resume as llm_client
+from app.services.llm_prompts import IMPACT_PASS_SYSTEM
 
 logger = logging.getLogger(__name__)
 
-def run_impact_pass(
+async def run_impact_pass(
     profile: ResumeParsedData,
     jd_analysis: JDAnalysisResult,
     rewritten_bullets_result: TargetedRewriteResult,
@@ -60,36 +61,18 @@ def run_impact_pass(
             "bullets": new_bullets
         })
 
-    # Call LLM to restructure, write anchor tagline, build highlights strip,
-    # prioritize, and trim experience/project bullets for a 1-page document target (8-10 bullets max total).
-    system_instruction = (
-        "You are a professional resume designer. Your task is to apply specific formatting and structural "
-        "optimization techniques to compile a high-impact, single-page tailored resume. You must follow "
-        "these strict design constraints:\n"
-        "1. Anchor Line: Generate a concise tagline (under 80 characters) under the candidate's name that "
-        "bridges their core expertise directly to the target role title. Use active, professional phrasing.\n"
-        "2. Highlights Strip: Select 4-5 key skills from the candidate's list that match the job description, "
-        "and provide a 1-sentence relevance reason showing how the candidate used or matches it.\n"
-        "3. Prioritization & Front-loading: For each experience role, reorder the bullet points to lead with the "
-        "most impactful, quantified achievements first (e.g. those with percentages, time savings, or revenue metrics).\n"
-        "4. Page Budget Trimming: To enforce a strict single-page limit, you must trim weaker, older, or less relevant "
-        "bullet points. Each job experience should have at most 3 bullet points, and the total number of experience "
-        "bullets across the entire resume must not exceed 8."
-    )
-
     prompt = (
-        f"Optimize the candidate's experience and project bullets for a target role of: '{jd_analysis.role_title}'.\n\n"
+        "Act as an ATS filter and a hiring manager reading 200 resumes in one sitting. Scan my resume to identify which sections get skipped and rewrite them so they actually stop scroll.\n\n"
+        f"Target Role: '{jd_analysis.role_title}'\n"
+        f"Seniority: {jd_analysis.seniority}\n"
+        f"Key Responsibilities: {'; '.join(jd_analysis.key_responsibilities)}\n\n"
         "--- TECHNIQUES TO APPLY ---\n"
     )
     for tech in techniques:
         prompt += f"- {tech.get('technique')}: {tech.get('description')}\n"
 
     prompt += (
-        "\n--- JOB DETAILS ---\n"
-        f"Role Title: {jd_analysis.role_title}\n"
-        f"Seniority: {jd_analysis.seniority}\n"
-        f"Key Responsibilities: {'; '.join(jd_analysis.key_responsibilities)}\n\n"
-        "--- CANDIDATE EXPERIENCES & PROJECTS (WITH TAILORED BULLETS) ---\n"
+        "\n--- CANDIDATE EXPERIENCES & PROJECTS (WITH TAILORED BULLETS) ---\n"
         "Experiences:\n"
     )
     for exp in mapped_experiences:
@@ -110,10 +93,10 @@ def run_impact_pass(
 
     logger.info("Executing Impact Pass stage (escalating to pro model)...")
     # Run on Pro model for higher quality tagline writing and formatting judgment
-    result = llm_client.generate_structured(
+    result = await llm_client.generate_structured_async(
         prompt=prompt,
         response_schema=ImpactPassResult,
         model_type="pro",
-        system_instruction=system_instruction
+        system_instruction=IMPACT_PASS_SYSTEM
     )
     return result

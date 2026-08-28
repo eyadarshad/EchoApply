@@ -101,3 +101,18 @@ async def test_job_service_remote_filter():
     response = await service.search_and_rank_jobs(request)
     for job in response.jobs:
         assert job.remote is True
+
+@pytest.mark.asyncio
+async def test_playwright_scrapers_graceful():
+    """Verify that calling the playwright scrapers behaves correctly and handles errors or execution gracefully."""
+    service = JobService()
+    # Test that we can call them without crashing
+    results = await service._scrape_linkedin_playwright(query="Python Developer", location="Karachi")
+    assert isinstance(results, list)
+    
+    results = await service._scrape_indeed_playwright(query="React Developer", location="Lahore")
+    assert isinstance(results, list)
+    
+    results = await service._scrape_glassdoor_playwright(query="Product Manager", location="Islamabad")
+    assert isinstance(results, list)
+

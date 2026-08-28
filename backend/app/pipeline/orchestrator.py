@@ -14,9 +14,9 @@ from app.pipeline.stages.truthfulness import verify_truthfulness
 
 logger = logging.getLogger(__name__)
 
-def tailor_resume_flow(profile: ResumeParsedData, jd_text: str, major: str = "Computer Science") -> Dict[str, Any]:
+async def tailor_resume_flow(profile: ResumeParsedData, jd_text: str, major: str = "Computer Science") -> Dict[str, Any]:
     """
-    Sequences the 7-stage tailoring pipeline:
+    Sequences the 7-stage tailoring pipeline asynchronously:
     1. JD Analysis
     2. Technique Selection
     3. Gap Analysis
@@ -25,25 +25,25 @@ def tailor_resume_flow(profile: ResumeParsedData, jd_text: str, major: str = "Co
     6. Truthfulness Gate
     7. Compile final structured profile
     """
-    logger.info("Starting tailoring flow...")
+    logger.info("Starting async tailoring flow...")
 
     # Stage 1: JD Analysis
-    jd_analysis = analyze_job_description(jd_text)
+    jd_analysis = await analyze_job_description(jd_text)
 
     # Stage 2: Technique Selection
     techniques = select_techniques(major)
 
     # Stage 3: Gap Analysis
-    gap_analysis = analyze_gaps(profile, jd_analysis)
+    gap_analysis = await analyze_gaps(profile, jd_analysis)
 
     # Stage 4: Targeted Rewrite
-    rewrite_result = rewrite_bullets(profile, gap_analysis)
+    rewrite_result = await rewrite_bullets(profile, gap_analysis)
 
     # Stage 5: Impact Pass & Trimming
-    impact_result = run_impact_pass(profile, jd_analysis, rewrite_result, techniques)
+    impact_result = await run_impact_pass(profile, jd_analysis, rewrite_result, techniques)
 
     # Stage 6: Truthfulness Gate
-    truthfulness_report = verify_truthfulness(profile, impact_result)
+    truthfulness_report = await verify_truthfulness(profile, impact_result)
 
     # Calculate basic ATS score based on keyword match percentage
     total_jd_skills = len(gap_analysis.matched_skills) + len(gap_analysis.missing_skills)

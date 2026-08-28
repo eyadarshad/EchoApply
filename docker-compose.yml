@@ -1,0 +1,81 @@
+# ============================================================
+# SmartApply AI — Local Development Stack
+# ============================================================
+# Usage:
+#   docker compose up              → Start all services
+#   docker compose up backend      → Start backend only
+#   docker compose up -d           → Start in background
+#   docker compose down            → Stop all services
+#   docker compose logs -f backend → Tail backend logs
+# ============================================================
+
+services:
+  # --- Backend (FastAPI + Playwright) ---
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/postgres
+      - DATA_DIR=/app/data
+    volumes:
+      - backend-data:/app/data
+      - ./backend/app:/app/app  # Hot reload in dev
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- Frontend (Next.js) ---
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        NEXT_PUBLIC_BACKEND_URL: "http://localhost:${BACKEND_PORT:-8000}"
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # --- PostgreSQL Database ---
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "54322:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # --- Redis (for Celery task queue) ---
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  backend-data:

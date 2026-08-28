@@ -54,8 +54,8 @@ export default function GuidedTour() {
   return (
     <div className="w-full max-w-4xl mx-auto rounded-3xl glass-card p-6 md:p-8 space-y-6 text-left animate-fade-in">
       <div>
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-indigo-500/20 bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 text-xs font-semibold uppercase tracking-wider mb-2">
-          New to SmartApply?
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-teal-500/20 bg-teal-500/5 text-teal-600 dark:text-teal-400 text-xs font-semibold uppercase tracking-wider mb-2">
+          New to Echo Apply?
         </div>
         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
           How It Works: 3-Step Guided Workspace
@@ -75,7 +75,7 @@ export default function GuidedTour() {
               onClick={() => setActiveStep(step.id)}
               className={`relative flex items-center gap-4 p-4 rounded-2xl border text-left transition duration-300 group overflow-hidden ${
                 isActive
-                  ? "border-indigo-500/30 bg-indigo-500/5 dark:bg-indigo-500/10 shadow-sm"
+                  ? "border-teal-500/30 bg-teal-500/5 dark:bg-teal-500/10 shadow-sm"
                   : "border-slate-200 dark:border-slate-800 bg-white/30 dark:bg-slate-900/10 hover:border-slate-300 dark:hover:border-slate-700"
               }`}
             >
@@ -83,7 +83,7 @@ export default function GuidedTour() {
               {isActive && (
                 <motion.div
                   layoutId="active-step-capsule"
-                  className="absolute inset-0 bg-indigo-500/5 dark:bg-indigo-500/10 z-0 pointer-events-none"
+                  className="absolute inset-0 bg-teal-500/5 dark:bg-teal-500/10 z-0 pointer-events-none"
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
@@ -91,7 +91,7 @@ export default function GuidedTour() {
               <div
                 className={`p-3 rounded-xl z-10 transition duration-300 ${
                   isActive
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-teal-600 text-white"
                     : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200"
                 }`}
               >
@@ -125,7 +125,7 @@ export default function GuidedTour() {
                 transition={{ duration: 0.3 }}
                 className="w-full space-y-3"
               >
-                <h4 className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                <h4 className="text-sm font-semibold text-teal-600 dark:text-teal-400">
                   Key Steps & Features:
                 </h4>
                 <ul className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -147,3 +147,4 @@ export default function GuidedTour() {
     </div>
   );
 }
+

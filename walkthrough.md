@@ -57,3 +57,59 @@ tests/test_auto_apply_agent.py::test_auto_apply_unmapped_required_field_block PA
 
 ============ 38 passed, 2 skipped, 3 warnings in 136.49s (0:02:16) ============
 ```
+
+---
+
+## 4. Environment & Color Theory Overhaul (v15.13.0)
+
+We completed a comprehensive update to the environment variables and applied design/color theory updates to make resume templates visually distinct.
+
+### Key Changes
+- **Environment Variables**: Populated the root `.env` with production keys for Supabase URL/keys, database pooler, Gemini API key, Groq API key, OpenRouter, GitHub, JSearch, Jooble, and Sentry.
+- **Color Theory Overhaul**: Redesigned default styles in `resume_templates.py`:
+  - *Classic*: Blue-themed corporate branding (`#2563eb`, `#1e40af`) instead of plain black.
+  - *Creative*: Dual coral-to-violet gradient (`#f43f5e` to `#8b5cf6`) to differentiate from standard teal layouts.
+  - *Minimal*: Indigo accents (`#6366f1` borders/lines) to emphasize structure and clean readability.
+  - *Executive*: Formally accented using corporate gold (`#d4af37`) and deep navy indigo (`#1e1b4b`).
+- **Download Fallback**: Implemented a browser-native print fallback calling `window.print()` if server-side rendering is offline.
+- **Playwright Setup**: Configured and installed the Playwright Chromium browser binary on the backend.
+
+### Full Test Suite Results
+With the credentials set, we ran the full venv test suite. All 61 collected tests passed:
+```text
+test_ocr_quality.py::test_resume_extraction PASSED                       [  1%]
+tests/eval/test_eval_ats_compatibility.py::test_eval_ats_compatibility_rendering PASSED [  3%]
+tests/eval/test_eval_job_matching.py::test_eval_job_matching_accuracy PASSED [  4%]
+tests/eval/test_eval_resume_parsing.py::test_eval_resume_parsing_accuracy PASSED [  6%]
+tests/eval/test_eval_truthfulness.py::test_eval_truthfulness_hallucination_rate PASSED [  8%]
+tests/test_apply.py::test_draft_answers_success PASSED                   [  9%]
+tests/test_apply.py::test_submit_application_success PASSED              [ 11%]
+tests/test_apply.py::test_submit_application_duplicate PASSED            [ 13%]
+tests/test_auto_apply_agent.py::test_auto_apply_success PASSED           [ 14%]
+...
+================= 61 passed, 6 warnings in 356.61s (0:05:56) ==================
+```
+
+---
+
+## 5. Phase 7: Unsynced Scrapers & AI Resume Generator Prompts
+
+We added support for direct Playwright scraping of LinkedIn, Indeed, and Glassdoor when the user hasn't synced account cookies, alongside five psychologically optimized AI resume rewriter templates with automated LLM fallback engines.
+
+### Scraper Enhancements
+- **LinkedIn Playwright Scraper**: Public anonymous search at `https://www.linkedin.com/jobs/search` parsing `ul.jobs-search__results-list li` elements.
+- **Indeed Playwright Scraper**: Public search at `https://www.indeed.com/jobs` parsing `div.job_seen_beacon` and `td.result`.
+- **Glassdoor Playwright Scraper**: Public search at `https://www.glassdoor.com/Job/jobs.htm` parsing `li[data-test='jobListing']` and `article` elements.
+- **Deduplication & Concurrency**: Integrates into the 4-second live search framework with background cache enrichment.
+
+### AI Resume Generator Prompts
+- curates 5 styling prompts (`classic`, `modern`, `minimal`, `creative`, `executive`) utilizing color theory palettes, WCAG contrast ratios, typography overrides, and psychological scroll-stop hooks.
+- Leverages Gemini key rotation, fallback to Groq (`llama-3.3-70b-versatile`), and OpenRouter (`nvidia/llama-3.1-nemotron-ultra-253b-v1:free` chains).
+
+### Testing Validation
+- Run full suite utilizing virtual environment interpreter:
+```bash
+..\.venv\Scripts\pytest
+```
+- **Result**: `62 passed` in 366 seconds.
+

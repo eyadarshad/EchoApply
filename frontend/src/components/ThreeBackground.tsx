@@ -19,7 +19,7 @@ function ShaderBackground() {
         y: 1.0 - (e.clientY / window.innerHeight),
       };
     };
-    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
@@ -117,7 +117,7 @@ function ShaderBackground() {
 
   return (
     <mesh rotation={[-Math.PI / 3.2, 0, 0]} position={[0, -0.8, -0.5]}>
-      <planeGeometry args={[12, 12, 60, 60]} />
+      <planeGeometry args={[12, 12, 28, 28]} />
       <shaderMaterial
         ref={materialRef}
         vertexShader={vertexShader}
@@ -138,7 +138,11 @@ export default function ThreeBackground() {
 
   return (
     <div className="fixed inset-0 w-full h-full -z-20 pointer-events-none">
-      <Canvas camera={{ position: [0, 0, 2.8], fov: 45 }}>
+      <Canvas
+        dpr={[1, 1.5]}
+        gl={{ powerPreference: "high-performance", antialias: false, stencil: false, depth: false, alpha: true }}
+        camera={{ position: [0, 0, 2.8], fov: 45 }}
+      >
         <ambientLight intensity={1.0} />
         <ShaderBackground />
       </Canvas>

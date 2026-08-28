@@ -53,8 +53,9 @@ def test_tailor_stub_endpoint(mock_tailor):
         },
         "ats_score": 90
     }
+    user_id = "00000000-0000-0000-0000-000000000123"
     payload = {
-        "user_id": "user-123",
+        "user_id": user_id,
         "job_id": "job-456",
         "jd_text": "We want a FastAPI developer",
         "parsed_resume": {
@@ -63,10 +64,10 @@ def test_tailor_stub_endpoint(mock_tailor):
             "skills": ["Python", "FastAPI"]
         }
     }
-    response = client.post("/tailor", json=payload)
+    response = client.post("/tailor", json=payload, headers={"X-Dev-User-Id": user_id})
     assert response.status_code == 200
     data = response.json()
-    assert data["user_id"] == "user-123"
+    assert data["user_id"] == user_id
     assert data["job_id"] == "job-456"
     assert "resume_id" in data
     assert "content_json" in data
@@ -88,11 +89,12 @@ def test_jobs_search_stub_endpoint():
     assert data["jobs"][0]["remote"] is True
 
 def test_apply_draft_stub_endpoint():
+    user_id = "00000000-0000-0000-0000-000000000123"
     payload = {
-        "user_id": "user-123",
+        "user_id": user_id,
         "job_id": "job-456"
     }
-    response = client.post("/apply/draft", json=payload)
+    response = client.post("/apply/draft", json=payload, headers={"X-Dev-User-Id": user_id})
     assert response.status_code == 200
     data = response.json()
     assert data["job_id"] == "job-456"
@@ -100,14 +102,29 @@ def test_apply_draft_stub_endpoint():
     assert data["questions"][0]["question_id"] == "q1"
 
 def test_apply_submit_stub_endpoint():
+    user_id = "00000000-0000-0000-0000-000000000123"
     payload = {
-        "user_id": "user-123",
+        "user_id": user_id,
         "job_id": "job-456",
         "answers": {"q1": "I have 2 years of experience"},
         "opt_in_agent": False
     }
-    response = client.post("/apply/submit", json=payload)
+    response = client.post("/apply/submit", json=payload, headers={"X-Dev-User-Id": user_id})
     assert response.status_code == 200
     data = response.json()
     assert "application_id" in data
     assert data["status"] == "success"
+
+def test_error_log_endpoint():
+    payload = {
+        "error_name": "TypeError",
+        "error_message": "Failed to fetch",
+        "stack_trace": "TypeError: Failed to fetch\n    at handleSearch (JobSearch.tsx:42)",
+        "url": "http://localhost:3000/",
+        "user_id": "00000000-0000-0000-0000-000000000001"
+    }
+    response = client.post("/api/errors/log", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert "logged successfully" in data["message"]

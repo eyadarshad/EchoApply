@@ -8,12 +8,13 @@ client = TestClient(app)
 
 def test_draft_answers_success():
     """Verify that /apply/draft drafts answers to screening questions."""
+    user_id = str(uuid.uuid4())
     payload = {
-        "user_id": str(uuid.uuid4()),
+        "user_id": user_id,
         "job_id": str(uuid.uuid4())
     }
     
-    response = client.post("/apply/draft", json=payload)
+    response = client.post("/apply/draft", json=payload, headers={"X-Dev-User-Id": user_id})
     assert response.status_code == 200
     data = response.json()
     assert "job_id" in data
@@ -43,7 +44,7 @@ def test_submit_application_success():
         "opt_in_agent": False
     }
     
-    response = client.post("/apply/submit", json=payload)
+    response = client.post("/apply/submit", json=payload, headers={"X-Dev-User-Id": user_id})
     assert response.status_code == 200
     data = response.json()
     assert "application_id" in data
@@ -71,7 +72,7 @@ def test_submit_application_duplicate(mock_connect):
         "opt_in_agent": False
     }
     
-    response = client.post("/apply/submit", json=payload)
+    response = client.post("/apply/submit", json=payload, headers={"X-Dev-User-Id": user_id})
     assert response.status_code == 200
     data = response.json()
     assert "application_id" in data

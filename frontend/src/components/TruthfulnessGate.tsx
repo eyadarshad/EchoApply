@@ -23,6 +23,8 @@ interface GapAnalysisResult {
     user_skill: string;
     reason: string;
   }>;
+  missing_keywords?: string[];
+  red_flags?: string[];
 }
 
 interface ResumeParsedData {
@@ -36,6 +38,12 @@ interface ResumeParsedData {
   projects: any[];
   anchor_line?: string;
   highlights_strip?: any[];
+  color_theme?: Record<string, string>;
+  font_family?: string;
+  executive_summary?: string;
+  certifications?: string[];
+  languages?: string[];
+  scroll_stop_hook?: string;
 }
 
 interface TruthfulnessGateProps {
@@ -99,14 +107,14 @@ export default function TruthfulnessGate({
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8 animate-fade-in pb-16">
-      {/* Overview Dashboard Card */}
+      {/* Overview Dashboard Cards */}
       <div className="grid md:grid-cols-3 gap-6">
         {/* ATS Score Card */}
         <div className="p-6 rounded-3xl border border-slate-800 bg-slate-900/20 backdrop-blur-xl flex flex-col items-center justify-center text-center relative overflow-hidden">
-          <div className="absolute top-0 inset-x-0 h-1 bg-indigo-500" />
+          <div className="absolute top-0 inset-x-0 h-1 bg-teal-500" />
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">ATS Score Match</span>
           <div className="relative flex items-center justify-center mt-4">
-            <div className="text-4xl font-extrabold text-indigo-400">{atsScore}%</div>
+            <div className="text-4xl font-extrabold text-teal-400">{atsScore}%</div>
           </div>
           <p className="text-[10px] text-slate-500 mt-3 max-w-[150px]">Score based on semantic keyword match to Job Description.</p>
         </div>
@@ -121,7 +129,7 @@ export default function TruthfulnessGate({
                 <span className="text-xs text-slate-500">No matching skills found.</span>
               ) : (
                 gapAnalysis.matched_skills.map((skill, idx) => (
-                  <span key={idx} className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] border border-emerald-500/20 font-medium">
+                  <span key={idx} className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] border border-emerald-500/20 font-medium font-sans">
                     {skill}
                   </span>
                 ))
@@ -129,7 +137,7 @@ export default function TruthfulnessGate({
             </div>
           </div>
           {gapAnalysis.partial_matches.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-slate-850 text-[10px] text-indigo-400">
+            <div className="mt-3 pt-3 border-t border-slate-800 text-[10px] text-teal-400">
               {gapAnalysis.partial_matches.length} Partial match(es) detected
             </div>
           )}
@@ -145,15 +153,73 @@ export default function TruthfulnessGate({
                 <span className="text-xs text-slate-500">No missing skills! Candidate is 100% matched.</span>
               ) : (
                 gapAnalysis.missing_skills.map((skill, idx) => (
-                  <span key={idx} className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 text-[10px] border border-rose-500/20 font-medium">
+                  <span key={idx} className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 text-[10px] border border-rose-500/20 font-medium font-sans">
                     {skill}
                   </span>
                 ))
               )}
             </div>
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-850 text-[10px] text-slate-500">
+          <div className="mt-3 pt-3 border-t border-slate-800 text-[10px] text-slate-500">
             *Gaps are kept authentic. No fabrications inserted.
+          </div>
+        </div>
+      </div>
+
+      {/* Recruiter Scroll-Stopper & Keywords Insights Card Grid */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Missing Keywords Card */}
+        <div className="p-6 rounded-3xl border border-teal-500/20 bg-teal-950/10 backdrop-blur-xl flex flex-col justify-between relative overflow-hidden text-left">
+          <div className="absolute top-0 inset-x-0 h-1 bg-teal-500" />
+          <div>
+            <div className="flex items-center gap-2 mb-2 text-teal-400 font-bold uppercase tracking-wider text-xs">
+              <Play className="w-3.5 h-3.5" /> Top 5 Missing Keywords (ATS Scan)
+            </div>
+            <p className="text-[10px] text-slate-400 mb-3">
+              These high-priority job keywords are missing or underrepresented. Adding them increases ATS filtering scores:
+            </p>
+            <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto">
+              {gapAnalysis.missing_keywords && gapAnalysis.missing_keywords.length > 0 ? (
+                gapAnalysis.missing_keywords.map((kw, idx) => (
+                  <span key={idx} className="px-2.5 py-1 rounded-xl bg-teal-500/10 border border-teal-500/25 text-teal-300 text-[10px] font-semibold font-sans">
+                    {kw}
+                  </span>
+                ))
+              ) : (
+                <span className="text-xs text-slate-500">No high-priority missing keywords detected!</span>
+              )}
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-slate-800 text-[9px] text-slate-500 leading-normal">
+            * Matched keywords have been naturally integrated into experience/project factual rewrites.
+          </div>
+        </div>
+
+        {/* Recruiter Red Flags Card */}
+        <div className="p-6 rounded-3xl border border-rose-500/20 bg-rose-950/10 backdrop-blur-xl flex flex-col justify-between relative overflow-hidden text-left">
+          <div className="absolute top-0 inset-x-0 h-1 bg-rose-500" />
+          <div>
+            <div className="flex items-center gap-2 mb-2 text-rose-400 font-bold uppercase tracking-wider text-xs">
+              <AlertCircle className="w-4 h-4 text-rose-400" /> Recruiter Red Flags (Scroll-Stoppers)
+            </div>
+            <p className="text-[10px] text-slate-400 mb-3">
+              Recruiters reading 200+ resumes in one sitting scan for these issues. Eliminate them to stop their scroll:
+            </p>
+            <div className="space-y-2">
+              {gapAnalysis.red_flags && gapAnalysis.red_flags.length > 0 ? (
+                gapAnalysis.red_flags.map((flag, idx) => (
+                  <div key={idx} className="flex items-start gap-1.5 text-xs text-slate-300">
+                    <span className="text-rose-500 font-bold mt-0.5">•</span>
+                    <span className="text-[10px] font-medium leading-relaxed">{flag}</span>
+                  </div>
+                ))
+              ) : (
+                <span className="text-xs text-slate-500">No critical red flags spotted! Your resume is clean.</span>
+              )}
+            </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-slate-800 text-[9px] text-slate-500 leading-normal">
+            * Factual rewrites use the **Google X-Y-Z formula** to naturally resolve these red flags.
           </div>
         </div>
       </div>
@@ -185,8 +251,8 @@ export default function TruthfulnessGate({
       {/* Tagline / Anchor Line Preview Card */}
       {tailoredResume.anchor_line && (
         <div className="p-6 rounded-3xl border border-slate-800 bg-slate-900/10 space-y-2">
-          <span className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">Tailored Tagline (Anchor Line)</span>
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-850 font-serif italic text-base text-slate-200 text-center">
+          <span className="text-xs font-semibold text-teal-400 uppercase tracking-wider">Tailored Tagline (Anchor Line)</span>
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 font-serif italic text-base text-slate-200 text-center">
             &ldquo;{tailoredResume.anchor_line}&rdquo;
           </div>
         </div>
@@ -228,7 +294,7 @@ export default function TruthfulnessGate({
                               value={tempEditText}
                               onChange={(e) => setTempEditText(e.target.value)}
                               rows={2}
-                              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-indigo-500 text-xs text-slate-200 focus:outline-none resize-y"
+                              className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-teal-500 text-xs text-slate-200 focus:outline-none resize-y"
                             />
                           ) : (
                             <p className="text-xs text-slate-200 font-light leading-relaxed">{bullet}</p>
@@ -240,7 +306,7 @@ export default function TruthfulnessGate({
                           {isEditing ? (
                             <button
                               onClick={() => handleSaveEdit(jobIdx, bulletIdx)}
-                              className="p-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-white transition"
+                              className="p-1.5 bg-teal-600 hover:bg-teal-500 rounded-lg text-white transition"
                               title="Save Changes"
                             >
                               <Save className="w-3.5 h-3.5" />
@@ -310,3 +376,4 @@ export default function TruthfulnessGate({
     </div>
   );
 }
+

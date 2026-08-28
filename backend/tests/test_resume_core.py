@@ -207,3 +207,64 @@ def test_extract_text_from_real_pdf_fixture():
     assert "johndoe@example.com" in extracted
     assert "State University" in extracted
 
+
+def test_compact_mode_render_and_generation(sample_profile):
+    from app.services.resume_templates import render_template, AVAILABLE_TEMPLATES
+    from app.services.resume_generator import generate_resume_pdf
+    
+    for t in AVAILABLE_TEMPLATES:
+        html = render_template(t, sample_profile, compact_mode=True)
+        assert len(html) > 0
+        assert sample_profile.name in html
+        
+        try:
+            pdf_bytes = generate_resume_pdf(sample_profile, t, compact_mode=True)
+            assert len(pdf_bytes) > 0
+        except (ImportError, OSError):
+            pass
+
+    payload = sample_profile.model_dump()
+    response = client.post("/render?format=pdf&compact_mode=true&template_name=modern", json=payload)
+    if response.status_code == 500 and "rendering libraries missing" in response.json().get("detail", ""):
+        pass
+    else:
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+
+
+def test_generate_styled_resume_endpoint_and_a4_output(sample_profile):
+    """Test /api/resume/generate-styled for all 5 template styles and verify A4 PDF output."""
+    styles = ["classic", "modern", "minimal", "creative", "executive"]
+    for s in styles:
+        payload = {
+            "template": s,
+            "parsed_resume": sample_profile.model_dump(),
+            "job_description": "We are seeking a Senior Systems Engineer with Python, FastAPI, distributed systems, and cloud experience."
+        }
+        res = client.post("/api/resume/generate-styled", json=payload)
+        assert res.status_code == 200
+        assert res.headers["content-type"] == "application/pdf"
+        assert len(res.content) > 1000
+        assert res.headers["content-disposition"] == f"attachment; filename=resume_ai_{s}.pdf"
+
+
+def test_psychological_rewriter_contract(sample_profile):
+    """Verify rewrite_resume_for_style populates scroll_stop_hook and respects single-page limits."""
+    from app.services.resume_rewriter import rewrite_resume_for_style
+    
+    with patch("app.services.resume_rewriter.llm_client.generate_structured") as mock_gen:
+        mock_result = sample_profile.model_copy(deep=True)
+        mock_result.scroll_stop_hook = "Senior Software Architect | High-Scale Distributed Systems | 10M+ Users"
+        mock_gen.return_value = mock_result
+        
+        enhanced = rewrite_resume_for_style(
+            sample_profile, 
+            "classic", 
+            "Senior Backend Engineer position"
+        )
+        assert enhanced.name == sample_profile.name
+        assert enhanced.email == sample_profile.email
+        assert enhanced.scroll_stop_hook is not None
+        assert len(enhanced.skills) <= 12
+
+

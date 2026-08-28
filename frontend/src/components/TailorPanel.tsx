@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Sparkles, Terminal, CheckCircle2, AlertTriangle, AlertCircle, RefreshCw, BarChart2 } from "lucide-react";
+import { apiFetch } from "../lib/api";
 
 interface ResumeParsedData {
   name: string;
@@ -14,6 +15,12 @@ interface ResumeParsedData {
   projects: any[];
   anchor_line?: string;
   highlights_strip?: any[];
+  color_theme?: Record<string, string>;
+  font_family?: string;
+  executive_summary?: string;
+  certifications?: string[];
+  languages?: string[];
+  scroll_stop_hook?: string;
 }
 
 interface TailorPanelProps {
@@ -69,12 +76,11 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
     const progressInterval = startStepProgression();
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
-      const response = await fetch(`${backendUrl}/tailor`, {
+      const effectiveUserId = user_id && user_id.trim() ? user_id : (typeof window !== "undefined" ? localStorage.getItem("user_id") || "guest" : "guest");
+      const data = await apiFetch(`/tailor`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: user_id,
+          user_id: effectiveUserId,
           job_id: "job-tailoring-session", // temp session job id
           jd_text: jdText,
           parsed_resume: parsed_resume
@@ -82,13 +88,6 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
       });
 
       clearInterval(progressInterval);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to tailor resume.");
-      }
-
-      const data = await response.json();
       setCurrentStep(PIPELINE_STEPS.length);
       
       // Delay slightly so the user sees the final step check off
@@ -113,15 +112,15 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
     <div className="w-full max-w-4xl mx-auto space-y-6 animate-fade-in">
       <div className="p-6 md:p-8 rounded-3xl glass-card relative overflow-hidden">
         {/* Glow effect */}
-        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
 
         <div className="flex justify-between items-start mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl">
+            <div className="p-2.5 bg-teal-500/10 text-teal-400 rounded-xl">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-slate-850 dark:text-slate-100">Step 2: Resume Tailoring Pipeline</h3>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Step 2: Resume Tailoring Pipeline</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">Paste the job listing description to tailor your experience factual matches.</p>
             </div>
           </div>
@@ -129,7 +128,7 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
             <button
               type="button"
               onClick={onBack}
-              className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-655 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition shadow-sm"
+              className="px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-bold transition shadow-sm"
             >
               &larr; Back to Profile
             </button>
@@ -139,7 +138,7 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
         {!loading ? (
           <form onSubmit={handleTailor} className="space-y-6">
             <div className="space-y-2 text-left">
-              <label htmlFor="jd-textarea" className="text-xs font-bold text-slate-550 dark:text-slate-300 uppercase tracking-wider">
+              <label htmlFor="jd-textarea" className="text-xs font-bold text-slate-500 dark:text-slate-300 uppercase tracking-wider">
                 Job Description text
               </label>
               <textarea
@@ -148,7 +147,7 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
                 value={jdText}
                 onChange={(e) => setJdText(e.target.value)}
                 placeholder="Paste the requirements, role description, and skills listed in the job opening..."
-                className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-sm focus:border-indigo-500/60 focus:outline-none transition duration-200 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-light resize-y shadow-sm"
+                className="w-full px-4 py-3 rounded-2xl bg-white dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 text-sm focus:border-teal-500/60 focus:outline-none transition duration-200 text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 font-light resize-y shadow-sm"
                 required
               />
             </div>
@@ -156,7 +155,7 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
             <button
               type="submit"
               disabled={!jdText.trim()}
-              className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-semibold text-sm transition duration-200 flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+              className="w-full py-3.5 rounded-2xl bg-teal-600 hover:bg-teal-500 active:bg-teal-700 text-white font-semibold text-sm transition duration-200 flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
             >
               <RefreshCw className="w-4 h-4" />
               Analyze & Tailor Bullet Points
@@ -176,23 +175,23 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
           <div className="py-8 space-y-8 animate-pulse">
             <div className="flex flex-col items-center justify-center space-y-4">
               <div className="relative flex items-center justify-center">
-                <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-                <Terminal className="w-5 h-5 text-indigo-400 absolute" />
+                <div className="w-12 h-12 rounded-full border-4 border-teal-500/20 border-t-teal-500 animate-spin" />
+                <Terminal className="w-5 h-5 text-teal-400 absolute" />
               </div>
               <div className="text-center">
-                <h4 className="text-sm font-semibold text-slate-805 dark:text-slate-200">Executing 7-Stage Pipeline</h4>
+                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">Executing 7-Stage Pipeline</h4>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">This will take ~10-15 seconds as it audits metrics and skills.</p>
               </div>
             </div>
 
             {/* Pipeline progress bar steps list */}
-            <div className="max-w-md mx-auto space-y-3.5 bg-slate-100/50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-850">
+            <div className="max-w-md mx-auto space-y-3.5 bg-slate-100/50 dark:bg-slate-950/40 p-5 rounded-2xl border border-slate-200 dark:border-slate-800">
               {PIPELINE_STEPS.map((step, idx) => (
                 <div key={idx} className="flex items-center gap-3 text-xs text-left">
                   {idx < currentStep ? (
                     <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
                   ) : idx === currentStep ? (
-                    <div className="w-4.5 h-4.5 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" />
+                    <div className="w-4.5 h-4.5 rounded-full border-2 border-teal-500 border-t-transparent animate-spin shrink-0" />
                   ) : (
                     <div className="w-4.5 h-4.5 rounded-full border border-slate-250 dark:border-slate-800 shrink-0" />
                   )}
@@ -208,3 +207,4 @@ export default function TailorPanel({ user_id, parsed_resume, onTailorSuccess, i
     </div>
   );
 }
+

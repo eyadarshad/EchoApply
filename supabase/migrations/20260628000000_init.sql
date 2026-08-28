@@ -87,3 +87,24 @@ CREATE TABLE IF NOT EXISTS job_cache (
 
 -- Create index for cache cleanup
 CREATE INDEX IF NOT EXISTS idx_job_cache_expires_at ON job_cache(expires_at);
+
+-- Saved Searches (Job Alerts)
+CREATE TABLE IF NOT EXISTS saved_searches (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    keywords TEXT NOT NULL,
+    location TEXT,
+    alert_interval TEXT DEFAULT 'weekly',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_searches_user ON saved_searches(user_id);
+
+-- Platform Credentials (encrypted session cookies)
+CREATE TABLE IF NOT EXISTS platform_credentials (
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    platform TEXT NOT NULL,
+    cookies_encrypted TEXT NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, platform)
+);

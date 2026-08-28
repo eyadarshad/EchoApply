@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Antigravity Apply Session Sync",
+  "version": "1.0.0",
+  "description": "Securely syncs active job board sessions (LinkedIn, Indeed, Glassdoor) to your Auto-Apply agent.",
+  "permissions": [
+    "cookies",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.linkedin.com/*",
+    "*://*.indeed.com/*",
+    "*://*.glassdoor.com/*",
+    "http://localhost:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

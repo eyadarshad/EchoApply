@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, field_validator
+from typing import List, Optional, Dict, Any, Union
 from datetime import datetime, timezone
 
 # ==========================================
@@ -67,6 +67,15 @@ class PartialSkillMatch(BaseModel):
     def get(self, key: str, default: Any = None) -> Any:
         return getattr(self, key, default)
 
+class SkillWithProvenance(BaseModel):
+    skill: str = Field(..., description="The name of the skill")
+    confidence: float = Field(default=1.0, description="Confidence level (0.0 to 1.0)")
+    source: str = Field(default="resume", description="Source: resume, inferred, user_confirmed")
+    evidence_text: str = Field(default="", description="Original text span or evidence context")
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
 class ResumeParsedData(BaseModel):
     name: str
     email: str
@@ -75,9 +84,16 @@ class ResumeParsedData(BaseModel):
     education: List[EducationEntry] = []
     experience: List[ExperienceEntry] = []
     skills: List[str] = []
+    skills_provenance: List[SkillWithProvenance] = []
     projects: List[ProjectEntry] = []
     anchor_line: Optional[str] = None
     highlights_strip: List[HighlightSkill] = []
+    color_theme: Optional[Dict[str, str]] = None
+    font_family: Optional[str] = None
+    executive_summary: Optional[str] = None
+    certifications: List[str] = []
+    languages: List[str] = []
+    scroll_stop_hook: Optional[str] = None
 
 class ResumeIntakeResponse(BaseModel):
     user_id: str
@@ -102,6 +118,8 @@ class GapAnalysisResult(BaseModel):
     matched_skills: List[str] = Field(default_factory=list, description="Skills present in resume that match the JD")
     missing_skills: List[str] = Field(default_factory=list, description="Required/preferred skills in the JD lacking in the resume")
     partial_matches: List[PartialSkillMatch] = Field(default_factory=list, description="List of related skills")
+    missing_keywords: List[str] = Field(default_factory=list, description="Top 5 missing keywords from the JD")
+    red_flags: List[str] = Field(default_factory=list, description="Top 3 red flags a hiring manager would spot in seconds")
 
 class RewrittenBullet(BaseModel):
     original_bullet: str
@@ -136,10 +154,33 @@ class ResumeTailorResponse(BaseModel):
     gap_analysis: Optional[GapAnalysisResult] = None
     truthfulness_report: Optional[TruthfulnessCheckResult] = None
 
+class SaveProfileRequest(BaseModel):
+    user_id: str
+    parsed_resume: ResumeParsedData
+    major: Optional[str] = None
+
+class SaveProfileResponse(BaseModel):
+    user_id: str
+    status: str
+
+class MatchExplanation(BaseModel):
+    explanation: str = Field(..., description="Concise explanation of candidate-job alignment")
+
 
 # ==========================================
 # Phase 3 & 5: Job Search & Matching
 # ==========================================
+
+class MatchBreakdown(BaseModel):
+    overall_score: float = 0.0
+    skill_match: Dict[str, Any] = {}
+    experience_fit: float = 0.0
+    seniority_fit: float = 0.0
+    location_fit: float = 0.0
+    hard_blockers: List[str] = []
+    recommendation: str = "Uncertain"
+
+from app.services.scam_detector import JobSafetyScore
 
 class JobCard(BaseModel):
     job_id: str
@@ -155,6 +196,29 @@ class JobCard(BaseModel):
     match_score: Optional[float] = None
     match_explanation: Optional[str] = None
     is_applied: bool = False
+    match_breakdown: Optional[MatchBreakdown] = None
+    skill_matches: List[str] = []
+    skill_gaps: List[str] = []
+    hard_blockers: List[str] = []
+    freshness_score: Optional[float] = None
+    safety_score: Optional[JobSafetyScore] = None
+    posted_at: Optional[str] = None
+    is_closed: bool = False
+
+    @field_validator('posted_at', mode='before')
+    @classmethod
+    def transform_posted_at(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        if isinstance(v, (int, float)):
+            try:
+                import datetime as dt
+                return dt.datetime.fromtimestamp(v, dt.timezone.utc).isoformat()
+            except Exception:
+                return str(v)
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return str(v)
 
 class JobSearchRequest(BaseModel):
     query: str
@@ -162,6 +226,8 @@ class JobSearchRequest(BaseModel):
     remote_only: bool = False
     limit: int = 50
     user_id: Optional[str] = None
+    date_posted: str = "week"  # "today", "3days", "week", "month", "any"
+    exclude_closed: bool = True
 
 class JobSearchResponse(BaseModel):
     query_hash: str
@@ -198,3 +264,35 @@ class ApplicationSubmitResponse(BaseModel):
     application_id: str
     status: str = Field(..., description="pending, success, or needs_action")
     action_required: Optional[Dict[str, Any]] = Field(None, description="CAPTCHA or login details required from the user")
+
+
+# ==========================================
+# Phase 7: Cover Letter Generation
+# ==========================================
+
+class CoverLetterRequest(BaseModel):
+    user_id: str
+    jd_text: str = Field(..., description="Job description text to tailor cover letter for")
+    parsed_resume: Optional[ResumeParsedData] = None
+    company_name: Optional[str] = None
+    role_title: Optional[str] = None
+
+class CoverLetterResponse(BaseModel):
+    cover_letter_text: str
+    word_count: int
+    generation_id: str
+    status: str = Field(..., description="success or error")
+    error: Optional[str] = None
+
+
+# ==========================================
+# Error Reporting & Sentry Logging
+# ==========================================
+
+class FrontendErrorLogRequest(BaseModel):
+    error_name: str = Field(..., description="The name/type of the error (e.g. TypeError)")
+    error_message: str = Field(..., description="The error description message")
+    stack_trace: Optional[str] = Field(None, description="The component error stack trace")
+    url: Optional[str] = Field(None, description="The client URL where the error occurred")
+    user_id: Optional[str] = Field(None, description="Optional authenticated user ID reporting the error")
+
