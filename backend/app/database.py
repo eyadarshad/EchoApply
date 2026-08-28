@@ -98,14 +98,20 @@ async def startup_db():
     if pool is None:
         init_pool()
     if pool:
-        logger.info("Opening database connection pool...")
-        await pool.open()
+        try:
+            logger.info("Opening database connection pool...")
+            await pool.open()
+        except Exception as e:
+            logger.error(f"Failed to open database connection pool on startup (will retry on demand): {e}")
 
 async def shutdown_db():
     global pool
     if pool:
-        logger.info("Closing database connection pool...")
-        await pool.close()
+        try:
+            logger.info("Closing database connection pool...")
+            await pool.close()
+        except Exception as e:
+            logger.warning(f"Error closing database pool: {e}")
 
 @asynccontextmanager
 async def get_db():
