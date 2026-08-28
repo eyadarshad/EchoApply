@@ -145,23 +145,15 @@ from app.routers import (
     auth_sync, mock, chat, privacy, audit
 )
 
-app.include_router(intake.router)
-app.include_router(profiles.router)
-app.include_router(tailor.router)
-app.include_router(jobs.router)
-app.include_router(apply.router)
-app.include_router(cover_letter.router)
-app.include_router(templates.router)
-app.include_router(render.router)
-app.include_router(billing.router)
-app.include_router(analytics.router)
-app.include_router(interview.router)
-app.include_router(admin.router)
-app.include_router(auth_sync.router)
-app.include_router(mock.router)
-app.include_router(chat.router)
-app.include_router(privacy.router)
-app.include_router(audit.router)
+all_routers = [
+    intake.router, profiles.router, tailor.router, jobs.router, apply.router, cover_letter.router,
+    templates.router, render.router, billing.router, analytics.router, interview.router, admin.router,
+    auth_sync.router, mock.router, chat.router, privacy.router, audit.router
+]
+
+for r in all_routers:
+    app.include_router(r)
+    app.include_router(r, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

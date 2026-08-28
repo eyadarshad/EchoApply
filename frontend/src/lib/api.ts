@@ -10,7 +10,8 @@
 
 import { supabase } from "./supabaseClient";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const rawBackendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL = rawBackendUrl.trim().replace(/\/+$/, "");
 
 /**
  * Get the backend base URL. Always use this instead of hardcoding localhost.
@@ -95,7 +96,8 @@ export async function apiFetch<T = any>(
 ): Promise<T> {
   await refreshTokenIfNeeded();
   
-  const url = `${BACKEND_URL}${path}`;
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const url = `${BACKEND_URL}${cleanPath}`;
   
   const headers = getAuthHeaders(
     options.headers as Record<string, string> | undefined
