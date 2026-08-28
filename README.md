@@ -1,4 +1,4 @@
-# ⚡ Echo Apply — Autonomous AI Career Copilot & Job Application Engine
+# Echo Apply — Autonomous AI Career Copilot & Job Application Engine
 
 <div align="center">
 
@@ -14,17 +14,17 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Gemini](https://img.shields.io/badge/Google_Gemini-2.5_Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
 
-[Live Demo](https://echo-apply.vercel.app) • [Architecture](#-architecture) • [Features](#-features) • [Installation](#-getting-started) • [Deployment](#-deployment)
+[Live Demo](https://echo-apply.vercel.app) • [Architecture](#architecture--tech-stack) • [Features](#key-features) • [Installation](#getting-started) • [Deployment](#production-deployment)
 
 </div>
 
 ---
 
-## 📸 Product Showcases
+## Product Showcases
 
 <div align="center">
 
-### 🌟 Intelligent Dashboard & Ambient Pretext Serpent
+### Intelligent Dashboard & Ambient Pretext Serpent
 ![Echo Apply Dashboard](./docs/images/dashboard_preview.png)
 *Real-time job matching, custom resume manager, and zero-reflow typography physics.*
 
@@ -32,31 +32,31 @@
 
 <br/>
 
-| 🎯 Truthfulness-Gated Resume Tailoring | ✍️ Dynamic Cover Letter Studio |
+| Truthfulness-Gated Resume Tailoring | Dynamic Cover Letter Studio |
 | :---: | :---: |
 | ![Resume Tailoring](./docs/images/tailor_preview.png) | ![Cover Letter Generator](./docs/images/cover_letter_preview.png) |
 | *Multi-stage pipeline rewriting with strict zero-hallucination validation.* | *Instant role-targeted cover letters with automatic fallback resilience.* |
 
-| 🎙️ AI Mock Interview Coach (STAR Method) | 🤖 Autonomous Browser Auto-Applier |
+| AI Mock Interview Coach (STAR Method) | Autonomous Browser Auto-Applier |
 | :---: | :---: |
 | ![Interview Practice](./docs/images/interview_preview.png) | ![Browser Agent](./docs/images/auto_apply_preview.png) |
 | *Dynamic question generator with real-time STAR compliance scoring.* | *Playwright agent with human-in-the-loop CAPTCHA detection.* |
 
 ---
 
-## 🚀 Features
+## Key Features
 
-### 1. 🎯 Deep Context Resume Tailoring & Truthfulness Gate
+### 1. Deep Context Resume Tailoring & Truthfulness Gate
 - **4-Stage LLM Pipeline**: Gap Analysis $\rightarrow$ Strategic Impact Scoring $\rightarrow$ Metric-Dense STAR Rewriting $\rightarrow$ Strict Truthfulness Gate.
 - **Zero-Fabrication Guarantee**: Rejects or flags any claims, tools, or dates not grounded in the candidate's verified resume profile.
 - **ATS Export**: Generates compliant, ATS-optimized PDFs and DOCX formats.
 
-### 2. ✍️ Resilient Cover Letter Studio
+### 2. Resilient Cover Letter Studio
 - Tailors 4-paragraph cover letters matching specific Job Descriptions in seconds.
 - **Multi-Model Fallback Chain**: Google Gemini 2.5 Flash $\rightarrow$ Groq LLaMA 3.3 70B $\rightarrow$ OpenRouter $\rightarrow$ Deterministic Heuristic Synthesis (100% uptime).
 - Built-in live PDF intake and JD quick presets (*Full-Stack*, *Frontend*, *Backend*).
 
-### 3. 🎙️ AI Mock Interview Practice & STAR Coach
+### 3. AI Mock Interview Practice & STAR Coach
 - Generates 5 customized technical and behavioral interview questions mapped to the candidate's actual work history and target JD.
 - **Dynamic Real-Time Scoring (0–100)** evaluating:
   - STAR Method Compliance (Situation, Task, Action, Result)
@@ -64,22 +64,22 @@
   - Communication Clarity & Actionable Tips
 - Includes 1-click sample answer auto-fillers for rapid practice.
 
-### 4. 🔍 Multi-Board Real-Time Job Crawler & Smart Matching
+### 4. Multi-Board Real-Time Job Crawler & Smart Matching
 - Continuously aggregates listings from **RemoteOK**, **Himalayas**, **Jobicy**, **Reed**, and **Adzuna**.
 - Semantic alignment calculations (0–100%) ranking openings by skills overlap, seniority match, and industry relevance.
 
-### 5. 🤖 Autonomous Browser Agent (Playwright Auto-Applier)
+### 5. Autonomous Browser Agent (Playwright Auto-Applier)
 - Automated job application filling on Greenhouse, Lever, Workday, and custom career portals.
 - **Human-in-the-Loop Handover**: Pauses and notifies the user if an interactive CAPTCHA or multi-factor authentication check is detected.
 - Encrypted cookie synchronization and credential isolation.
 
-### 6. ⚡ Pretext Arithmetic Layout Engine
+### 6. Pretext Arithmetic Layout Engine
 - Sub-pixel kinetic text animation and ambient mascot powered by `@chenglou/pretext`.
 - Eliminates browser layout thrashing (`getBoundingClientRect`) by caching document spatial coordinates for fluid 60–120 FPS performance.
 
 ---
 
-## 🛠️ Architecture & Tech Stack
+## Architecture & Tech Stack
 
 ```
                                ┌────────────────────────────────┐
@@ -113,7 +113,7 @@
 
 ---
 
-## 💻 Getting Started
+## Getting Started
 
 ### Prerequisites
 - **Node.js**: `v18.17+` or `v20+`
@@ -176,7 +176,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run Backend Test Suite (Pytest)
@@ -191,7 +191,7 @@ npx tsc --noEmit
 
 ---
 
-## 🌐 Production Deployment
+## Production Deployment
 
 ### Backend Deployment (Render / Railway)
 1. Link your GitHub repository to [Render](https://render.com).
@@ -209,7 +209,7 @@ npx tsc --noEmit
 
 ---
 
-## 🔒 Security & Privacy
+## Security & Privacy
 - **Row-Level Security (RLS)**: Users can only query and mutate their own profile and application records.
 - **Zero-Storage Secrets**: Sensitive API keys and credentials reside strictly in server-side memory.
 - **Client Sanitization**: Public bundle contains only safe `NEXT_PUBLIC_*` identifiers.
@@ -217,11 +217,11 @@ npx tsc --noEmit
 
 ---
 
-## 📄 License
+## License
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ---
 
 <div align="center">
-Built with ❤️ by <a href="https://github.com/eyadarshad">Eyad Arshad</a>
+Built by <a href="https://github.com/eyadarshad">Eyad Arshad</a>
 </div>
